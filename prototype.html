@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CUBE POP — 퍼즐 프로토타입</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;}
+  body{
+    background:#12151d;color:#e8eaf0;
+    font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic','Segoe UI',sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .wrap{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+  .panel{width:256px;display:flex;flex-direction:column;gap:12px;}
+  h1{font-size:19px;letter-spacing:1px;}
+  h1 small{font-size:11px;color:#79819a;font-weight:400;display:block;margin-top:3px;letter-spacing:0;}
+  .card{background:#1b1f2a;border:1px solid #2a3040;border-radius:14px;padding:13px;}
+  .card h2{font-size:11px;color:#8b93a7;margin-bottom:9px;font-weight:700;letter-spacing:.5px;}
+
+  /* ---------- 3D viewer ---------- */
+  .viewer{height:180px;perspective:640px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;}
+  .viewer:active{cursor:grabbing;}
+  .cube3d{width:104px;height:104px;position:relative;transform-style:preserve-3d;transform:rotateX(-24deg) rotateY(-34deg);}
+  .f3d{
+    position:absolute;width:104px;height:104px;border:2px solid rgba(0,0,0,.35);border-radius:9px;
+    display:flex;align-items:center;justify-content:center;font-size:36px;color:rgba(0,0,0,.5);
+    backface-visibility:hidden;
+  }
+  .f3d .lbl{position:absolute;top:5px;left:8px;font-size:10px;font-weight:700;color:rgba(0,0,0,.55);}
+  .hint{font-size:10.5px;color:#79819a;text-align:center;margin-top:4px;line-height:1.5;}
+
+  /* ---------- net (전개도) ---------- */
+  .net{display:grid;grid-template-areas:". n ." "w u e" ". s ." ". d .";
+    grid-template-columns:repeat(3,36px);grid-auto-rows:36px;gap:4px;justify-content:center;}
+  .net div{border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;color:rgba(0,0,0,.5);position:relative;border:1.5px solid rgba(0,0,0,.3);}
+  .net div i{position:absolute;top:1px;left:3px;font-size:8px;font-style:normal;font-weight:700;color:rgba(0,0,0,.55);}
+  .nN{grid-area:n}.nS{grid-area:s}.nE{grid-area:e}.nW{grid-area:w}.nU{grid-area:u}.nD{grid-area:d}
+  .nU{outline:2px solid #fff;outline-offset:1px;}
+
+  /* ---------- HUD ---------- */
+  .stats{display:flex;gap:8px;}
+  .stat{flex:1;background:#1b1f2a;border:1px solid #2a3040;border-radius:12px;padding:9px 6px;text-align:center;}
+  .stat .v{font-size:21px;font-weight:800;}
+  .stat .k{font-size:10px;color:#8b93a7;margin-top:2px;}
+  #movesV.low{color:#ff5d73;}
+  .goalbar{height:9px;background:#242a38;border-radius:6px;overflow:hidden;margin-top:7px;}
+  .goalbar span{display:block;height:100%;background:linear-gradient(90deg,#06d6a0,#4cc9f0);width:0%;transition:width .3s;border-radius:6px;}
+  #goalText{font-size:11.5px;color:#aab2c5;}
+
+  .modes{display:flex;gap:6px;}
+  .modes button{flex:1;padding:9px 4px;border-radius:10px;border:1px solid #2a3040;background:#1b1f2a;
+    color:#8b93a7;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .modes button.on{background:#2b3a55;border-color:#4cc9f0;color:#fff;}
+  .btns{display:flex;gap:6px;}
+  .btns button{flex:1;padding:9px 4px;border-radius:10px;border:none;background:#323a4d;color:#dfe3ee;
+    font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btns button:hover{background:#3d4763;}
+  .btns .primary{background:#0e7c66;}
+  .btns .primary:hover{background:#0f9178;}
+
+  .help{font-size:11.5px;color:#8b93a7;line-height:1.65;}
+  .help b{color:#c9d0e0;}
+
+  /* ---------- board ---------- */
+  .boardWrap{position:relative;}
+  #board{position:relative;background:#171b25;border:1px solid #2a3040;border-radius:16px;padding:10px;}
+  #boardInner{position:relative;}
+  .slot{position:absolute;width:64px;height:64px;border-radius:11px;background:#1f2431;}
+
+  .cube{
+    position:absolute;width:64px;height:64px;
+    transition:transform .26s cubic-bezier(.3,1.2,.4,1),opacity .24s ease;
+    cursor:grab;touch-action:none;
+  }
+  .cube:active{cursor:grabbing;}
+
+  /* flat hint ring — shows the color sitting on each side of the cube */
+  .ringBox{position:absolute;inset:0;border-radius:11px;overflow:hidden;filter:brightness(.72) saturate(.9);}
+  .hN,.hS,.hE,.hW{position:absolute;inset:0;}
+  .hN{clip-path:polygon(0 0,100% 0,79% 21%,21% 21%);}
+  .hS{clip-path:polygon(0 100%,100% 100%,79% 79%,21% 79%);}
+  .hE{clip-path:polygon(100% 0,100% 100%,79% 79%,79% 21%);}
+  .hW{clip-path:polygon(0 0,0 100%,21% 79%,21% 21%);}
+
+  /* real 3D mini cube that rolls */
+  .cubeBox{position:absolute;inset:8px;perspective:340px;}
+  .cubeW{
+    position:absolute;inset:0;transform-style:preserve-3d;
+    transform:rotateX(14deg);
+    transition:transform .26s cubic-bezier(.35,.9,.4,1);
+  }
+  .cf{
+    position:absolute;width:48px;height:48px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;font-size:19px;color:rgba(0,0,0,.5);
+    backface-visibility:hidden;box-shadow:inset 0 0 0 2px rgba(0,0,0,.22);
+  }
+  .cfF{transform:translateZ(24px);}
+  .cfB{transform:rotateY(180deg) translateZ(24px);}
+  .cfR{transform:rotateY(90deg) translateZ(24px);filter:brightness(.78);}
+  .cfL{transform:rotateY(-90deg) translateZ(24px);filter:brightness(.78);}
+  .cfT{transform:rotateX(90deg) translateZ(24px);filter:brightness(.85);}
+  .cfBo{transform:rotateX(-90deg) translateZ(24px);filter:brightness(.68);}
+
+  .float{
+    position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+    font-size:26px;font-weight:900;color:#ffd166;text-shadow:0 2px 8px rgba(0,0,0,.6);
+    pointer-events:none;animation:floatUp .9s ease forwards;z-index:20;white-space:nowrap;
+  }
+  @keyframes floatUp{0%{opacity:0;transform:translate(-50%,-30%) scale(.6);}25%{opacity:1;transform:translate(-50%,-50%) scale(1.1);}70%{opacity:1;}100%{opacity:0;transform:translate(-50%,-90%) scale(1);}}
+
+  #overlay{
+    position:absolute;inset:0;background:rgba(14,16,24,.82);border-radius:16px;z-index:30;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
+  }
+  #overlay.show{display:flex;}
+  #ovTitle{font-size:30px;font-weight:900;}
+  #ovSub{font-size:13px;color:#aab2c5;line-height:1.7;}
+  #overlay .btns{margin-top:8px;width:220px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== left panel ===== -->
+  <div class="panel">
+    <h1>CUBE POP<small>큐브 회전 매치 퍼즐 · 프로토타입 v2</small></h1>
+
+    <div class="card">
+      <h2>이번 스테이지의 큐브 &nbsp;·&nbsp; 드래그해서 굴려보기</h2>
+      <div class="viewer" id="viewer">
+        <div class="cube3d" id="cube3d">
+          <div class="f3d" id="v-U"><span class="lbl">보이는 면</span><b class="s"></b></div>
+          <div class="f3d" id="v-D"><span class="lbl">반대면</span><b class="s"></b></div>
+          <div class="f3d" id="v-N"><span class="lbl">뒤</span><b class="s"></b></div>
+          <div class="f3d" id="v-S"><span class="lbl">앞</span><b class="s"></b></div>
+          <div class="f3d" id="v-E"><span class="lbl">오른쪽</span><b class="s"></b></div>
+          <div class="f3d" id="v-W"><span class="lbl">왼쪽</span><b class="s"></b></div>
+        </div>
+      </div>
+      <div class="hint">판 위의 모든 블록은 이 큐브와 <b>같은 색 배치</b>,<br>놓인 방향만 다릅니다</div>
+    </div>
+
+    <div class="card">
+      <h2>전개도</h2>
+      <div class="net">
+        <div class="nN" id="n-N"><i>위</i><b class="s"></b></div>
+        <div class="nW" id="n-W"><i>왼</i><b class="s"></b></div>
+        <div class="nU" id="n-U"><i>▣</i><b class="s"></b></div>
+        <div class="nE" id="n-E"><i>오른</i><b class="s"></b></div>
+        <div class="nS" id="n-S"><i>아래</i><b class="s"></b></div>
+        <div class="nD" id="n-D"><i>반대</i><b class="s"></b></div>
+      </div>
+    </div>
+
+    <div class="card help">
+      <b>조작법</b> — 블록을 원하는 방향으로 <b>드래그</b>하면 큐브가 실제로 그 방향으로 굴러갑니다. 굴린 방향의 <b>반대쪽 옆면</b>이 위로 올라옵니다 (1회 굴리기 = 1회 소모).<br>
+      블록 주변의 <b>어두운 테두리</b>는 각 방향에 놓인 옆면의 색. 같은 색이 상하좌우 <b>3개 이상</b> 모이면 터지고, 연쇄 시 콤보 배수!
+    </div>
+  </div>
+
+  <!-- ===== board ===== -->
+  <div class="boardWrap">
+    <div id="board">
+      <div id="boardInner"></div>
+      <div id="overlay">
+        <div id="ovTitle"></div>
+        <div id="ovSub"></div>
+        <div class="btns">
+          <button onclick="newBoard()">다시 시작</button>
+          <button class="primary" onclick="newStage()">새 큐브</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== right panel ===== -->
+  <div class="panel">
+    <div class="modes">
+      <button id="mRefill" class="on" onclick="setMode('refill')">매치3 리필</button>
+      <button id="mClear" onclick="setMode('clear')">보드 클리어</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="v" id="movesV">0</div><div class="k">남은 횟수</div></div>
+      <div class="stat"><div class="v" id="scoreV">0</div><div class="k">점수</div></div>
+      <div class="stat"><div class="v" id="comboV">×1</div><div class="k">최대 콤보</div></div>
+    </div>
+
+    <div class="card">
+      <h2>목표</h2>
+      <div id="goalText"></div>
+      <div class="goalbar"><span id="goalFill"></span></div>
+    </div>
+
+    <div class="btns">
+      <button onclick="newBoard()">다시 시작</button>
+      <button class="primary" onclick="newStage()">새 큐브 스테이지</button>
+    </div>
+
+    <div class="card help">
+      <b>매치3 리필</b> — 터지면 위에서 새 블록이 떨어짐. 목표 개수만큼 터뜨리면 승리. 연쇄 콤보의 손맛용.<br><br>
+      <b>보드 클리어</b> — 새 블록 없음. 남은 횟수 안에 판을 전부 비우면 승리. 계획형 퍼즐의 손맛용.
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+/* ================= config ================= */
+const COLORS=['#ef476f','#ffd166','#06d6a0','#4cc9f0'];
+const SYM=['●','▲','■','★'];
+const ROWS=6,COLS=6,CELL=64,GAP=8,STEP=CELL+GAP;
+const MOVES={refill:18,clear:22};
+const GOAL_POP=45;
+const REST='rotateX(14deg)';
+
+/* ================= state ================= */
+let faceColorIdx=[];           // face id(0..5) -> color index(0..3)
+let grid=[];                   // grid[r][c] = cube | null
+let mode='refill';
+let movesLeft=0,score=0,popped=0,maxCombo=1;
+let busy=false,over=false,idSeq=0;
+
+const $=id=>document.getElementById(id);
+const boardInner=$('boardInner');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+
+/* ================= cube math ================= */
+// orientation: which face id sits at each slot (U=top shown on board, N=screen-up side, ...)
+const identOrient=()=>({U:0,D:1,N:2,S:3,E:4,W:5});
+// pull(d): the face currently on side d rolls up to the top
+function pull(o,d){
+  const{U,D,N,S,E,W}=o;
+  if(d==='N')return{U:N,N:D,D:S,S:U,E,W};
+  if(d==='S')return{U:S,S:D,D:N,N:U,E,W};
+  if(d==='E')return{U:E,E:D,D:W,W:U,N,S};
+  return{U:W,W:D,D:E,E:U,N,S};
+}
+function randOrient(){
+  let o=identOrient();const ds='NSEW';
+  for(let i=0;i<14;i++)o=pull(o,ds[Math.floor(Math.random()*4)]);
+  return o;
+}
+const colIdx=(cube,slot)=>faceColorIdx[cube.orient[slot]];
+
+/* ================= board DOM ================= */
+function sizeBoard(){
+  boardInner.style.width=(COLS*STEP-GAP)+'px';
+  boardInner.style.height=(ROWS*STEP-GAP)+'px';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const s=document.createElement('div');s.className='slot';
+    s.style.transform=`translate(${c*STEP}px,${r*STEP}px)`;
+    boardInner.appendChild(s);
+  }
+}
+function makeCube(r,c){
+  const cube={id:++idSeq,orient:randOrient(),r,c,el:null,wrap:null,f:{},h:{},_g:null};
+  const el=document.createElement('div');el.className='cube';
+  el.innerHTML=
+    '<div class="ringBox">'+
+      '<div class="hN"></div><div class="hS"></div><div class="hE"></div><div class="hW"></div>'+
+    '</div>'+
+    '<div class="cubeBox"><div class="cubeW">'+
+      '<div class="cf cfF"><span></span></div>'+   // U (faces viewer)
+      '<div class="cf cfB"><span></span></div>'+   // D
+      '<div class="cf cfT"><span></span></div>'+   // N (screen-up side)
+      '<div class="cf cfBo"><span></span></div>'+  // S
+      '<div class="cf cfR"><span></span></div>'+   // E
+      '<div class="cf cfL"><span></span></div>'+   // W
+    '</div></div>';
+  cube.wrap=el.querySelector('.cubeW');
+  cube.f={U:el.querySelector('.cfF'),D:el.querySelector('.cfB'),N:el.querySelector('.cfT'),
+          S:el.querySelector('.cfBo'),E:el.querySelector('.cfR'),W:el.querySelector('.cfL')};
+  cube.h={N:el.querySelector('.hN'),S:el.querySelector('.hS'),E:el.querySelector('.hE'),W:el.querySelector('.hW')};
+  attachGesture(cube,el);
+  cube.el=el;boardInner.appendChild(el);
+  return cube;
+}
+function paint(cube){
+  for(const slot of ['U','D','N','S','E','W']){
+    const ci=colIdx(cube,slot);
+    cube.f[slot].style.background=COLORS[ci];
+    cube.f[slot].querySelector('span').textContent=SYM[ci];
+  }
+  for(const slot of ['N','S','E','W'])cube.h[slot].style.background=COLORS[colIdx(cube,slot)];
+}
+const place=cube=>{cube.el.style.transform=`translate(${cube.c*STEP}px,${cube.r*STEP}px)`;};
+
+/* ================= drag-to-roll interaction ================= */
+// physical rolling: dragging E rolls the cube eastward, so the W-side face comes up
+const ROLL_T={
+  N:'rotateX(104deg)',                      // 14 + 90
+  S:'rotateX(-76deg)',                      // 14 - 90
+  E:'rotateX(14deg) rotateY(90deg)',
+  W:'rotateX(14deg) rotateY(-90deg)'
+};
+const ROLL_PULL={N:'S',S:'N',E:'W',W:'E'};
+function attachGesture(cube,el){
+  el.addEventListener('pointerdown',e=>{
+    if(busy||over||movesLeft<=0)return;
+    e.preventDefault();
+    cube._g={x:e.clientX,y:e.clientY,fired:false};
+    try{el.setPointerCapture(e.pointerId);}catch(_){}
+  });
+  el.addEventListener('pointermove',e=>{
+    const g=cube._g;
+    if(!g||g.fired)return;
+    const dx=e.clientX-g.x,dy=e.clientY-g.y;
+    if(Math.hypot(dx,dy)<13)return;
+    g.fired=true;
+    const dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'E':'W'):(dy>0?'S':'N');
+    doRoll(cube,dir);
+  });
+  el.addEventListener('pointerup',()=>cube._g=null);
+  el.addEventListener('pointercancel',()=>cube._g=null);
+}
+async function doRoll(cube,dir){
+  if(busy||over||movesLeft<=0)return;
+  busy=true;
+  movesLeft--;updateHUD();
+  const w=cube.wrap;
+  w.style.transform=ROLL_T[dir];          // animated by CSS transition
+  await sleep(265);
+  cube.orient=pull(cube.orient,ROLL_PULL[dir]);
+  w.style.transition='none';
+  w.style.transform=REST;
+  paint(cube);
+  w.getBoundingClientRect();
+  w.style.transition='';
+  busy=false;
+  resolve();
+}
+
+/* ================= match / cascade ================= */
+function findMatches(){
+  const seen=new Set(),groups=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const cu=grid[r][c];
+    if(!cu||seen.has(cu.id))continue;
+    const col=colIdx(cu,'U'),stack=[[r,c]],grp=[];
+    seen.add(cu.id);
+    while(stack.length){
+      const[rr,cc]=stack.pop();grp.push(grid[rr][cc]);
+      for(const[dr,dc]of[[1,0],[-1,0],[0,1],[0,-1]]){
+        const nr=rr+dr,nc=cc+dc;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS)continue;
+        const nb=grid[nr][nc];
+        if(nb&&!seen.has(nb.id)&&colIdx(nb,'U')===col){seen.add(nb.id);stack.push([nr,nc]);}
+      }
+    }
+    if(grp.length>=3)groups.push(grp);
+  }
+  return groups;
+}
+async function resolve(){
+  busy=true;let mult=1;
+  while(true){
+    const groups=findMatches();
+    if(!groups.length)break;
+    const all=groups.flat();
+    popped+=all.length;
+    score+=all.length*10*mult;
+    maxCombo=Math.max(maxCombo,mult);
+    if(mult>1)showFloat('콤보 ×'+mult+'!');
+    else if(all.length>=5)showFloat(all.length+'개 동시!');
+    all.forEach(cu=>{
+      cu.el.style.transform=`translate(${cu.c*STEP}px,${cu.r*STEP}px) scale(.12)`;
+      cu.el.style.opacity=0;
+    });
+    updateHUD();
+    await sleep(290);
+    all.forEach(cu=>{cu.el.remove();grid[cu.r][cu.c]=null;});
+    // gravity
+    for(let c=0;c<COLS;c++){
+      const stack=[];
+      for(let r=ROWS-1;r>=0;r--)if(grid[r][c])stack.push(grid[r][c]);
+      for(let r=ROWS-1;r>=0;r--){
+        const cu=stack[ROWS-1-r]||null;
+        grid[r][c]=cu;
+        if(cu){cu.r=r;cu.c=c;place(cu);}
+      }
+      if(mode==='refill'){
+        const need=ROWS-stack.length;
+        for(let r=0;r<need;r++){
+          const cu=makeCube(r,c);
+          grid[r][c]=cu;paint(cu);
+          cu.el.style.transition='none';
+          cu.el.style.transform=`translate(${c*STEP}px,${(r-need)*STEP}px)`;
+          cu.el.getBoundingClientRect();
+          cu.el.style.transition='';
+          place(cu);
+        }
+      }
+    }
+    await sleep(330);
+    mult++;
+  }
+  busy=false;
+  checkEnd();
+}
+
+/* ================= game flow ================= */
+const boardCount=()=>{let n=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c])n++;return n;};
+function checkEnd(){
+  if(over)return;
+  const win=(mode==='refill'&&popped>=GOAL_POP)||(mode==='clear'&&boardCount()===0);
+  if(win){end(true);return;}
+  if(movesLeft<=0)end(false);
+}
+function end(win){
+  over=true;
+  $('ovTitle').textContent=win?'🎉 클리어!':'😵 실패…';
+  $('ovTitle').style.color=win?'#06d6a0':'#ff5d73';
+  $('ovSub').innerHTML=
+    '점수 <b>'+score+'</b> · 최대 콤보 ×'+maxCombo+
+    (mode==='refill'?'<br>터뜨린 블록 '+popped+'개':'<br>남은 블록 '+boardCount()+'개');
+  $('overlay').classList.add('show');
+}
+function updateHUD(){
+  $('movesV').textContent=movesLeft;
+  $('movesV').classList.toggle('low',movesLeft<=4);
+  $('scoreV').textContent=score;
+  $('comboV').textContent='×'+maxCombo;
+  if(mode==='refill'){
+    $('goalText').innerHTML='블록 <b>'+GOAL_POP+'개</b> 터뜨리기 — 현재 <b>'+popped+'</b>개';
+    $('goalFill').style.width=Math.min(100,popped/GOAL_POP*100)+'%';
+  }else{
+    const n=boardCount();
+    $('goalText').innerHTML='판 전부 비우기 — 남은 블록 <b>'+n+'</b>개';
+    $('goalFill').style.width=(100-(n/(ROWS*COLS))*100)+'%';
+  }
+}
+function showFloat(txt){
+  const d=document.createElement('div');d.className='float';d.textContent=txt;
+  $('board').appendChild(d);
+  setTimeout(()=>d.remove(),900);
+}
+function newBoard(){
+  boardInner.querySelectorAll('.cube').forEach(e=>e.remove());
+  grid=[...Array(ROWS)].map(()=>Array(COLS).fill(null));
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const cu=makeCube(r,c);grid[r][c]=cu;paint(cu);place(cu);
+  }
+  let guard=0;
+  while(guard++<120){
+    const g=findMatches();
+    if(!g.length)break;
+    g.flat().forEach(cu=>{cu.orient=randOrient();paint(cu);});
+  }
+  movesLeft=MOVES[mode];score=0;popped=0;maxCombo=1;over=false;busy=false;
+  $('overlay').classList.remove('show');
+  updateHUD();
+}
+function newStage(){
+  faceColorIdx=shuffle([0,0,1,1,2,3]); // 4색을 6면에 2-2-1-1 분포
+  renderViewer();renderNet();newBoard();
+}
+function setMode(m){
+  mode=m;
+  $('mRefill').classList.toggle('on',m==='refill');
+  $('mClear').classList.toggle('on',m==='clear');
+  newBoard();
+}
+
+/* ================= 3D viewer & net ================= */
+const H=52;
+const FACE_T={
+  U:'rotateX(90deg) translateZ('+H+'px)',
+  D:'rotateX(-90deg) translateZ('+H+'px)',
+  N:'rotateY(180deg) translateZ('+H+'px)',
+  S:'translateZ('+H+'px)',
+  E:'rotateY(90deg) translateZ('+H+'px)',
+  W:'rotateY(-90deg) translateZ('+H+'px)'
+};
+function renderViewer(){
+  const io=identOrient();
+  for(const slot of ['U','D','N','S','E','W']){
+    const el=$('v-'+slot);
+    el.style.transform=FACE_T[slot];
+    el.style.background=COLORS[faceColorIdx[io[slot]]];
+    el.querySelector('.s').textContent=SYM[faceColorIdx[io[slot]]];
+  }
+}
+function renderNet(){
+  const io=identOrient();
+  for(const slot of ['U','D','N','S','E','W']){
+    const el=$('n-'+slot);
+    el.style.background=COLORS[faceColorIdx[io[slot]]];
+    el.querySelector('.s').textContent=SYM[faceColorIdx[io[slot]]];
+  }
+}
+let rotX=-24,rotY=-34,dragging=false,lx=0,ly=0;
+const viewer=$('viewer'),cube3d=$('cube3d');
+viewer.addEventListener('pointerdown',e=>{dragging=true;lx=e.clientX;ly=e.clientY;viewer.setPointerCapture(e.pointerId);});
+viewer.addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  rotY+=(e.clientX-lx)*.55;rotX-=(e.clientY-ly)*.55;
+  lx=e.clientX;ly=e.clientY;
+  cube3d.style.transform='rotateX('+rotX+'deg) rotateY('+rotY+'deg)';
+});
+viewer.addEventListener('pointerup',()=>dragging=false);
+viewer.addEventListener('pointercancel',()=>dragging=false);
+
+/* ================= init ================= */
+sizeBoard();
+newStage();
+</script>
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CUBE POP — 스테이지 모드</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;}
+  body{
+    background:#12151d;color:#e8eaf0;
+    font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic','Segoe UI',sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .wrap{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+  .panel{width:256px;display:flex;flex-direction:column;gap:12px;}
+  h1{font-size:19px;letter-spacing:1px;}
+  h1 small{font-size:11px;color:#79819a;font-weight:400;display:block;margin-top:3px;letter-spacing:0;}
+  .card{background:#1b1f2a;border:1px solid #2a3040;border-radius:14px;padding:13px;}
+  .card h2{font-size:11px;color:#8b93a7;margin-bottom:9px;font-weight:700;letter-spacing:.5px;}
+
+  /* ---------- 3D viewer ---------- */
+  .viewer{height:180px;perspective:640px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;}
+  .viewer:active{cursor:grabbing;}
+  .cube3d{width:104px;height:104px;position:relative;transform-style:preserve-3d;transform:rotateX(-24deg) rotateY(-34deg);}
+  .f3d{
+    position:absolute;width:104px;height:104px;border:2px solid rgba(0,0,0,.35);border-radius:9px;
+    display:flex;align-items:center;justify-content:center;font-size:36px;color:rgba(0,0,0,.5);
+    backface-visibility:hidden;
+  }
+  .f3d .lbl{position:absolute;top:5px;left:8px;font-size:10px;font-weight:700;color:rgba(0,0,0,.55);}
+  .hint{font-size:10.5px;color:#79819a;text-align:center;margin-top:4px;line-height:1.5;}
+
+  /* ---------- net (전개도) ---------- */
+  .net{display:grid;grid-template-areas:". n ." "w u e" ". s ." ". d .";
+    grid-template-columns:repeat(3,36px);grid-auto-rows:36px;gap:4px;justify-content:center;}
+  .net div{border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;color:rgba(0,0,0,.5);position:relative;border:1.5px solid rgba(0,0,0,.3);}
+  .net div i{position:absolute;top:1px;left:3px;font-size:8px;font-style:normal;font-weight:700;color:rgba(0,0,0,.55);}
+  .nN{grid-area:n}.nS{grid-area:s}.nE{grid-area:e}.nW{grid-area:w}.nU{grid-area:u}.nD{grid-area:d}
+  .nU{outline:2px solid #fff;outline-offset:1px;}
+
+  /* ---------- HUD ---------- */
+  .stageHead{display:flex;align-items:baseline;justify-content:space-between;}
+  .stageHead .sn{font-size:24px;font-weight:900;letter-spacing:1px;}
+  .stageHead .colors{font-size:11px;color:#8b93a7;}
+  .stats{display:flex;gap:8px;}
+  .stat{flex:1;background:#1b1f2a;border:1px solid #2a3040;border-radius:12px;padding:9px 6px;text-align:center;}
+  .stat .v{font-size:21px;font-weight:800;}
+  .stat .k{font-size:10px;color:#8b93a7;margin-top:2px;}
+  #movesV.low{color:#ff5d73;}
+
+  .goals{display:flex;flex-direction:column;gap:7px;}
+  .gchip{
+    display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:10px;
+    background:#242a38;border:1px solid #303748;
+  }
+  .gchip .dot{
+    width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;color:rgba(0,0,0,.5);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.25);flex:none;
+  }
+  .gchip .cnt{font-size:15px;font-weight:800;margin-left:auto;}
+  .gchip .bar{flex:1;height:7px;background:#181c26;border-radius:5px;overflow:hidden;}
+  .gchip .bar span{display:block;height:100%;border-radius:5px;transition:width .3s;}
+  .gchip.done{border-color:#06d6a0;}
+  .gchip.done .cnt{color:#06d6a0;}
+
+  .btns{display:flex;gap:6px;}
+  .btns button{flex:1;padding:9px 4px;border-radius:10px;border:none;background:#323a4d;color:#dfe3ee;
+    font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btns button:hover{background:#3d4763;}
+  .btns .primary{background:#0e7c66;}
+  .btns .primary:hover{background:#0f9178;}
+
+  .help{font-size:11.5px;color:#8b93a7;line-height:1.65;}
+  .help b{color:#c9d0e0;}
+
+  /* ---------- board ---------- */
+  .boardWrap{position:relative;}
+  #board{position:relative;background:#171b25;border:1px solid #2a3040;border-radius:16px;padding:10px;}
+  #boardInner{position:relative;}
+  .slot{position:absolute;width:64px;height:64px;border-radius:11px;background:#1f2431;}
+
+  .cube{
+    position:absolute;width:64px;height:64px;
+    transition:transform .26s cubic-bezier(.3,1.2,.4,1),opacity .24s ease;
+    cursor:grab;touch-action:none;
+  }
+  .cube:active{cursor:grabbing;}
+  .ringBox{position:absolute;inset:0;border-radius:11px;overflow:hidden;filter:brightness(.72) saturate(.9);}
+  .hN,.hS,.hE,.hW{position:absolute;inset:0;}
+  .hN{clip-path:polygon(0 0,100% 0,79% 21%,21% 21%);}
+  .hS{clip-path:polygon(0 100%,100% 100%,79% 79%,21% 79%);}
+  .hE{clip-path:polygon(100% 0,100% 100%,79% 79%,79% 21%);}
+  .hW{clip-path:polygon(0 0,0 100%,21% 79%,21% 21%);}
+  .cubeBox{position:absolute;inset:8px;perspective:340px;}
+  .cubeW{
+    position:absolute;inset:0;transform-style:preserve-3d;
+    transform:rotateX(14deg);
+    transition:transform .26s cubic-bezier(.35,.9,.4,1);
+  }
+  .cf{
+    position:absolute;width:48px;height:48px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;font-size:19px;color:rgba(0,0,0,.5);
+    backface-visibility:hidden;box-shadow:inset 0 0 0 2px rgba(0,0,0,.22);
+  }
+  .cfF{transform:translateZ(24px);}
+  .cfB{transform:rotateY(180deg) translateZ(24px);}
+  .cfR{transform:rotateY(90deg) translateZ(24px);filter:brightness(.78);}
+  .cfL{transform:rotateY(-90deg) translateZ(24px);filter:brightness(.78);}
+  .cfT{transform:rotateX(90deg) translateZ(24px);filter:brightness(.85);}
+  .cfBo{transform:rotateX(-90deg) translateZ(24px);filter:brightness(.68);}
+
+  .float{
+    position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+    font-size:26px;font-weight:900;color:#ffd166;text-shadow:0 2px 8px rgba(0,0,0,.6);
+    pointer-events:none;animation:floatUp .9s ease forwards;z-index:20;white-space:nowrap;
+  }
+  @keyframes floatUp{0%{opacity:0;transform:translate(-50%,-30%) scale(.6);}25%{opacity:1;transform:translate(-50%,-50%) scale(1.1);}70%{opacity:1;}100%{opacity:0;transform:translate(-50%,-90%) scale(1);}}
+
+  #overlay{
+    position:absolute;inset:0;background:rgba(14,16,24,.85);border-radius:16px;z-index:30;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
+  }
+  #overlay.show{display:flex;}
+  #ovStars{font-size:34px;letter-spacing:6px;}
+
+  #skipBtn{
+    position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:25;
+    padding:11px 24px;border-radius:24px;border:none;background:#06d6a0;color:#08382c;
+    font-weight:900;font-size:14px;cursor:pointer;display:none;font-family:inherit;
+    box-shadow:0 4px 16px rgba(0,0,0,.45);animation:skipPulse .7s infinite alternate;
+  }
+  #skipBtn.show{display:block;}
+  @keyframes skipPulse{from{transform:translateX(-50%) scale(1);}to{transform:translateX(-50%) scale(1.07);}}
+
+  /* ---------- mobile ---------- */
+  @media (max-width:900px){
+    body{padding:10px 6px;align-items:flex-start;overflow-x:hidden;}
+    .wrap{flex-direction:column;align-items:center;gap:14px;max-width:100%;}
+    .boardWrap{order:-1;}
+    .panel{width:100%;max-width:446px;}
+    .viewer{height:150px;}
+  }
+  #ovStars .off{opacity:.22;}
+  #ovTitle{font-size:29px;font-weight:900;}
+  #ovSub{font-size:13px;color:#aab2c5;line-height:1.7;}
+  #overlay .btns{margin-top:8px;width:220px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== left panel ===== -->
+  <div class="panel">
+    <h1>CUBE POP<small>스테이지 모드 · 프로토타입 v3</small></h1>
+
+    <div class="card">
+      <h2>이번 스테이지의 큐브 &nbsp;·&nbsp; 드래그해서 굴려보기</h2>
+      <div class="viewer" id="viewer">
+        <div class="cube3d" id="cube3d">
+          <div class="f3d" id="v-U"><span class="lbl">보이는 면</span><b class="s"></b></div>
+          <div class="f3d" id="v-D"><span class="lbl">반대면</span><b class="s"></b></div>
+          <div class="f3d" id="v-N"><span class="lbl">뒤</span><b class="s"></b></div>
+          <div class="f3d" id="v-S"><span class="lbl">앞</span><b class="s"></b></div>
+          <div class="f3d" id="v-E"><span class="lbl">오른쪽</span><b class="s"></b></div>
+          <div class="f3d" id="v-W"><span class="lbl">왼쪽</span><b class="s"></b></div>
+        </div>
+      </div>
+      <div class="hint">판 위의 모든 블록은 이 큐브와 <b>같은 색 배치</b>,<br>놓인 방향만 다릅니다</div>
+    </div>
+
+    <div class="card">
+      <h2>전개도</h2>
+      <div class="net">
+        <div class="nN" id="n-N"><i>위</i><b class="s"></b></div>
+        <div class="nW" id="n-W"><i>왼</i><b class="s"></b></div>
+        <div class="nU" id="n-U"><i>▣</i><b class="s"></b></div>
+        <div class="nE" id="n-E"><i>오른</i><b class="s"></b></div>
+        <div class="nS" id="n-S"><i>아래</i><b class="s"></b></div>
+        <div class="nD" id="n-D"><i>반대</i><b class="s"></b></div>
+      </div>
+    </div>
+
+    <div class="card help">
+      <b>조작법</b> — 블록을 원하는 방향으로 <b>드래그</b>하면 큐브가 굴러갑니다. 굴린 방향의 <b>반대쪽 옆면</b>이 위로 (1회 굴리기 = 1회 소모).<br>
+      같은 색 <b>3개 이상</b>이면 터짐. <b>목표 색만 수집에 카운트</b>되지만, 다른 색을 터뜨려 연쇄를 만드는 것도 전략!
+    </div>
+  </div>
+
+  <!-- ===== board ===== -->
+  <div class="boardWrap">
+    <div id="board">
+      <div id="boardInner"></div>
+      <button id="skipBtn" onclick="requestSkip()">목표 달성! 스킵 →</button>
+      <div id="overlay">
+        <div id="ovStars"></div>
+        <div id="ovTitle"></div>
+        <div id="ovSub"></div>
+        <div class="btns" id="ovBtns"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== right panel ===== -->
+  <div class="panel">
+    <div class="card">
+      <div class="stageHead">
+        <div class="sn" id="stageV">STAGE 1</div>
+        <div class="colors" id="colorsV"></div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="v" id="movesV">0</div><div class="k">남은 횟수</div></div>
+      <div class="stat"><div class="v" id="scoreV">0</div><div class="k">누적 점수</div></div>
+      <div class="stat"><div class="v" id="comboV">×1</div><div class="k">최대 콤보</div></div>
+    </div>
+
+    <div class="card">
+      <h2>수집 목표</h2>
+      <div class="goals" id="goals"></div>
+    </div>
+
+    <div class="btns">
+      <button onclick="restartStage()">이 스테이지 다시</button>
+      <button onclick="resetRun()">처음부터</button>
+    </div>
+
+    <div class="card help">
+      <b>난이도 커브</b> — 스테이지가 오를수록 큐브의 <b>구성 색이 3색 → 6색</b>까지 늘어나고, 색 분포도 까다로워집니다. 6면이 전부 다른 색인 큐브가 최종 단계!<br><br>
+      별점: 남은 횟수가 많을수록 ★★★
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+/* ================= stage config =================
+   dist  : 큐브 6면의 색 분포 (합=6). 앞쪽 색일수록 면이 많음
+   goals : [로컬 색 인덱스, 수집 개수]  (인덱스가 클수록 희귀한 색)
+   moves : 제한 횟수
+================================================== */
+const STAGES=[
+  {dist:[2,2,2],       goals:[[0,9],[1,9]],        moves:13},
+  {dist:[2,2,1,1],     goals:[[0,10],[2,8]],       moves:14},
+  {dist:[3,1,1,1],     goals:[[1,8],[2,8]],        moves:15},
+  {dist:[2,1,1,1,1],   goals:[[0,10],[1,7],[2,7]], moves:16},
+  {dist:[1,1,1,1,1,1], goals:[[0,6],[1,6],[2,6]],  moves:16},
+];
+function stageConfig(n){ // n: 0-based
+  if(n<STAGES.length)return JSON.parse(JSON.stringify(STAGES[n]));
+  const loop=n-STAGES.length;
+  const base=JSON.parse(JSON.stringify(STAGES[2+(loop%3)]));
+  const scale=1+.15*(Math.floor(loop/3)+1);
+  base.goals.forEach(g=>g[1]=Math.round(g[1]*scale));
+  base.moves+=1;
+  return base;
+}
+
+const PALETTE=['#ef476f','#ffd166','#06d6a0','#4cc9f0','#b78bfa','#ff9448'];
+const SYMS=['●','▲','■','★','◆','♥'];
+const ROWS=6,COLS=6,CELL=64,GAP=8,STEP=CELL+GAP;
+const REST='rotateX(14deg)';
+
+/* ================= state ================= */
+let stageNo=0;             // 0-based
+let faceColorIdx=[];       // face id(0..5) -> local color index
+let stageColors=[];        // local color index -> palette index
+let goals=[];              // [{ci,need,got}]
+let cfgMoves=0;
+let grid=[];
+let movesLeft=0,score=0,maxCombo=1;
+let busy=false,over=false,idSeq=0;
+
+const $=id=>document.getElementById(id);
+const boardInner=$('boardInner');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const colHex=ci=>PALETTE[stageColors[ci]];
+const colSym=ci=>SYMS[stageColors[ci]];
+
+/* ================= cube math ================= */
+const identOrient=()=>({U:0,D:1,N:2,S:3,E:4,W:5});
+function pull(o,d){
+  const{U,D,N,S,E,W}=o;
+  if(d==='N')return{U:N,N:D,D:S,S:U,E,W};
+  if(d==='S')return{U:S,S:D,D:N,N:U,E,W};
+  if(d==='E')return{U:E,E:D,D:W,W:U,N,S};
+  return{U:W,W:D,D:E,E:U,N,S};
+}
+function randOrient(){
+  let o=identOrient();const ds='NSEW';
+  for(let i=0;i<14;i++)o=pull(o,ds[Math.floor(Math.random()*4)]);
+  return o;
+}
+const colIdx=(cube,slot)=>faceColorIdx[cube.orient[slot]];
+
+/* ================= board DOM ================= */
+function sizeBoard(){
+  boardInner.style.width=(COLS*STEP-GAP)+'px';
+  boardInner.style.height=(ROWS*STEP-GAP)+'px';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const s=document.createElement('div');s.className='slot';
+    s.style.transform=`translate(${c*STEP}px,${r*STEP}px)`;
+    boardInner.appendChild(s);
+  }
+}
+function makeCube(r,c){
+  const cube={id:++idSeq,orient:randOrient(),r,c,el:null,wrap:null,f:{},h:{},_g:null};
+  const el=document.createElement('div');el.className='cube';
+  el.innerHTML=
+    '<div class="ringBox">'+
+      '<div class="hN"></div><div class="hS"></div><div class="hE"></div><div class="hW"></div>'+
+    '</div>'+
+    '<div class="cubeBox"><div class="cubeW">'+
+      '<div class="cf cfF"><span></span></div>'+
+      '<div class="cf cfB"><span></span></div>'+
+      '<div class="cf cfT"><span></span></div>'+
+      '<div class="cf cfBo"><span></span></div>'+
+      '<div class="cf cfR"><span></span></div>'+
+      '<div class="cf cfL"><span></span></div>'+
+    '</div></div>';
+  cube.wrap=el.querySelector('.cubeW');
+  cube.f={U:el.querySelector('.cfF'),D:el.querySelector('.cfB'),N:el.querySelector('.cfT'),
+          S:el.querySelector('.cfBo'),E:el.querySelector('.cfR'),W:el.querySelector('.cfL')};
+  cube.h={N:el.querySelector('.hN'),S:el.querySelector('.hS'),E:el.querySelector('.hE'),W:el.querySelector('.hW')};
+  attachGesture(cube,el);
+  cube.el=el;boardInner.appendChild(el);
+  return cube;
+}
+function paint(cube){
+  for(const slot of ['U','D','N','S','E','W']){
+    const ci=colIdx(cube,slot);
+    cube.f[slot].style.background=colHex(ci);
+    cube.f[slot].querySelector('span').textContent=colSym(ci);
+  }
+  for(const slot of ['N','S','E','W'])cube.h[slot].style.background=colHex(colIdx(cube,slot));
+}
+const place=cube=>{cube.el.style.transform=`translate(${cube.c*STEP}px,${cube.r*STEP}px)`;};
+
+/* ================= drag-to-roll ================= */
+const ROLL_T={
+  N:'rotateX(104deg)',
+  S:'rotateX(-76deg)',
+  E:'rotateX(14deg) rotateY(90deg)',
+  W:'rotateX(14deg) rotateY(-90deg)'
+};
+const ROLL_PULL={N:'S',S:'N',E:'W',W:'E'};
+function attachGesture(cube,el){
+  el.addEventListener('pointerdown',e=>{
+    if(busy||over||movesLeft<=0)return;
+    e.preventDefault();
+    cube._g={x:e.clientX,y:e.clientY,fired:false};
+    try{el.setPointerCapture(e.pointerId);}catch(_){}
+  });
+  el.addEventListener('pointermove',e=>{
+    const g=cube._g;
+    if(!g||g.fired)return;
+    const dx=e.clientX-g.x,dy=e.clientY-g.y;
+    if(Math.hypot(dx,dy)<13)return;
+    g.fired=true;
+    const dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'E':'W'):(dy>0?'S':'N');
+    doRoll(cube,dir);
+  });
+  el.addEventListener('pointerup',()=>cube._g=null);
+  el.addEventListener('pointercancel',()=>cube._g=null);
+}
+async function doRoll(cube,dir){
+  if(busy||over||movesLeft<=0)return;
+  busy=true;
+  movesLeft--;updateHUD();
+  const w=cube.wrap;
+  w.style.transform=ROLL_T[dir];
+  await sleep(265);
+  cube.orient=pull(cube.orient,ROLL_PULL[dir]);
+  w.style.transition='none';
+  w.style.transform=REST;
+  paint(cube);
+  w.getBoundingClientRect();
+  w.style.transition='';
+  busy=false;
+  resolve();
+}
+
+/* ================= match / cascade ================= */
+function findMatches(){
+  const seen=new Set(),groups=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const cu=grid[r][c];
+    if(!cu||seen.has(cu.id))continue;
+    const col=colIdx(cu,'U'),stack=[[r,c]],grp=[];
+    seen.add(cu.id);
+    while(stack.length){
+      const[rr,cc]=stack.pop();grp.push(grid[rr][cc]);
+      for(const[dr,dc]of[[1,0],[-1,0],[0,1],[0,-1]]){
+        const nr=rr+dr,nc=cc+dc;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS)continue;
+        const nb=grid[nr][nc];
+        if(nb&&!seen.has(nb.id)&&colIdx(nb,'U')===col){seen.add(nb.id);stack.push([nr,nc]);}
+      }
+    }
+    if(grp.length>=3)groups.push(grp);
+  }
+  return groups;
+}
+let skipReq=false;
+function requestSkip(){skipReq=true;$('skipBtn').classList.remove('show');}
+async function resolve(){
+  busy=true;let mult=1;
+  while(true){
+    if(skipReq&&goalsDone())break;   // 목표 달성 후 스킵: 남은 연쇄 생략
+    const groups=findMatches();
+    if(!groups.length)break;
+    const all=groups.flat();
+    all.forEach(cu=>{
+      const ci=colIdx(cu,'U');
+      const g=goals.find(g=>g.ci===ci);
+      if(g)g.got++;
+    });
+    score+=all.length*10*mult;
+    maxCombo=Math.max(maxCombo,mult);
+    if(goalsDone()&&!over)$('skipBtn').classList.add('show');
+    if(mult>1)showFloat('콤보 ×'+mult+'!');
+    else if(all.length>=5)showFloat(all.length+'개 동시!');
+    all.forEach(cu=>{
+      cu.el.style.transform=`translate(${cu.c*STEP}px,${cu.r*STEP}px) scale(.12)`;
+      cu.el.style.opacity=0;
+    });
+    updateHUD();
+    await sleep(290);
+    all.forEach(cu=>{cu.el.remove();grid[cu.r][cu.c]=null;});
+    for(let c=0;c<COLS;c++){
+      const stack=[];
+      for(let r=ROWS-1;r>=0;r--)if(grid[r][c])stack.push(grid[r][c]);
+      for(let r=ROWS-1;r>=0;r--){
+        const cu=stack[ROWS-1-r]||null;
+        grid[r][c]=cu;
+        if(cu){cu.r=r;cu.c=c;place(cu);}
+      }
+      const need=ROWS-stack.length;
+      for(let r=0;r<need;r++){
+        const cu=makeCube(r,c);
+        grid[r][c]=cu;paint(cu);
+        cu.el.style.transition='none';
+        cu.el.style.transform=`translate(${c*STEP}px,${(r-need)*STEP}px)`;
+        cu.el.getBoundingClientRect();
+        cu.el.style.transition='';
+        place(cu);
+      }
+    }
+    await sleep(330);
+    mult++;
+  }
+  $('skipBtn').classList.remove('show');
+  skipReq=false;
+  busy=false;
+  checkEnd();
+}
+
+/* ================= game flow ================= */
+const goalsDone=()=>goals.every(g=>g.got>=g.need);
+function checkEnd(){
+  if(over)return;
+  if(goalsDone()){winStage();return;}
+  if(movesLeft<=0)failStage();
+}
+function starCount(){
+  const ratio=movesLeft/cfgMoves;
+  return ratio>=.3?3:ratio>=.12?2:1;
+}
+function winStage(){
+  over=true;
+  const s=starCount();
+  score+=movesLeft*20; // 남은 횟수 보너스
+  $('ovStars').innerHTML='★★★'.split('').map((c,i)=>i<s?'<span>★</span>':'<span class="off">★</span>').join('');
+  $('ovTitle').textContent='STAGE '+(stageNo+1)+' 클리어!';
+  $('ovTitle').style.color='#06d6a0';
+  $('ovSub').innerHTML='남은 횟수 보너스 +'+(movesLeft*20)+' · 누적 점수 <b>'+score+'</b>';
+  $('ovBtns').innerHTML='<button class="primary" onclick="nextStage()">다음 스테이지 →</button>';
+  $('overlay').classList.add('show');
+  updateHUD();
+}
+function failStage(){
+  over=true;
+  $('ovStars').innerHTML='';
+  $('ovTitle').textContent='😵 횟수 소진…';
+  $('ovTitle').style.color='#ff5d73';
+  const left=goals.filter(g=>g.got<g.need).map(g=>colSym(g.ci)+' '+(g.need-g.got)+'개').join(' · ');
+  $('ovSub').innerHTML='남은 목표: '+left;
+  $('ovBtns').innerHTML='<button class="primary" onclick="restartStage()">다시 도전</button><button onclick="resetRun()">처음부터</button>';
+  $('overlay').classList.add('show');
+}
+function updateHUD(){
+  $('stageV').textContent='STAGE '+(stageNo+1);
+  $('colorsV').textContent=stageColors.length+'색 큐브';
+  $('movesV').textContent=movesLeft;
+  $('movesV').classList.toggle('low',movesLeft<=4);
+  $('scoreV').textContent=score;
+  $('comboV').textContent='×'+maxCombo;
+  $('goals').innerHTML=goals.map(g=>{
+    const pct=Math.min(100,g.got/g.need*100);
+    const done=g.got>=g.need;
+    return '<div class="gchip'+(done?' done':'')+'">'+
+      '<div class="dot" style="background:'+colHex(g.ci)+'">'+colSym(g.ci)+'</div>'+
+      '<div class="bar"><span style="width:'+pct+'%;background:'+colHex(g.ci)+'"></span></div>'+
+      '<div class="cnt">'+(done?'완료':Math.min(g.got,g.need)+'/'+g.need)+'</div>'+
+    '</div>';
+  }).join('');
+}
+function showFloat(txt){
+  const d=document.createElement('div');d.className='float';d.textContent=txt;
+  $('board').appendChild(d);
+  setTimeout(()=>d.remove(),900);
+}
+function buildBoard(){
+  boardInner.querySelectorAll('.cube').forEach(e=>e.remove());
+  grid=[...Array(ROWS)].map(()=>Array(COLS).fill(null));
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const cu=makeCube(r,c);grid[r][c]=cu;paint(cu);place(cu);
+  }
+  let guard=0;
+  while(guard++<120){
+    const g=findMatches();
+    if(!g.length)break;
+    g.flat().forEach(cu=>{cu.orient=randOrient();paint(cu);});
+  }
+}
+function setupStage(n,keepScore){
+  stageNo=n;
+  const cfg=stageConfig(n);
+  const k=cfg.dist.length;
+  stageColors=shuffle([0,1,2,3,4,5]).slice(0,k);
+  const faces=[];
+  cfg.dist.forEach((cnt,i)=>{for(let j=0;j<cnt;j++)faces.push(i);});
+  faceColorIdx=shuffle(faces);
+  goals=cfg.goals.map(([ci,need])=>({ci,need,got:0}));
+  cfgMoves=cfg.moves;
+  movesLeft=cfg.moves;maxCombo=1;over=false;busy=false;
+  skipReq=false;$('skipBtn').classList.remove('show');
+  if(!keepScore)score=0;
+  renderViewer();renderNet();buildBoard();
+  $('overlay').classList.remove('show');
+  updateHUD();
+}
+function nextStage(){setupStage(stageNo+1,true);}
+function restartStage(){setupStage(stageNo,true);}
+function resetRun(){setupStage(0,false);}
+
+/* ================= 3D viewer & net ================= */
+const H=52;
+const FACE_T={
+  U:'rotateX(90deg) translateZ('+H+'px)',
+  D:'rotateX(-90deg) translateZ('+H+'px)',
+  N:'rotateY(180deg) translateZ('+H+'px)',
+  S:'translateZ('+H+'px)',
+  E:'rotateY(90deg) translateZ('+H+'px)',
+  W:'rotateY(-90deg) translateZ('+H+'px)'
+};
+function renderViewer(){
+  const io=identOrient();
+  for(const slot of ['U','D','N','S','E','W']){
+    const el=$('v-'+slot);
+    el.style.transform=FACE_T[slot];
+    el.style.background=colHex(faceColorIdx[io[slot]]);
+    el.querySelector('.s').textContent=colSym(faceColorIdx[io[slot]]);
+  }
+}
+function renderNet(){
+  const io=identOrient();
+  for(const slot of ['U','D','N','S','E','W']){
+    const el=$('n-'+slot);
+    el.style.background=colHex(faceColorIdx[io[slot]]);
+    el.querySelector('.s').textContent=colSym(faceColorIdx[io[slot]]);
+  }
+}
+let rotX=-24,rotY=-34,dragging=false,lx=0,ly=0;
+const viewer=$('viewer'),cube3d=$('cube3d');
+viewer.addEventListener('pointerdown',e=>{dragging=true;lx=e.clientX;ly=e.clientY;viewer.setPointerCapture(e.pointerId);});
+viewer.addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  rotY+=(e.clientX-lx)*.55;rotX-=(e.clientY-ly)*.55;
+  lx=e.clientX;ly=e.clientY;
+  cube3d.style.transform='rotateX('+rotX+'deg) rotateY('+rotY+'deg)';
+});
+viewer.addEventListener('pointerup',()=>dragging=false);
+viewer.addEventListener('pointercancel',()=>dragging=false);
+
+/* ================= responsive board scale ================= */
+function fitBoard(){
+  const natural=COLS*STEP-GAP+22;              // board padding+border 포함
+  const vw=Math.min(document.documentElement.clientWidth,screen.width||99999);
+  const sc=Math.min(1,(vw-12)/natural);
+  $('board').style.zoom=sc;                    // zoom은 레이아웃까지 함께 축소
+}
+window.addEventListener('resize',fitBoard);
+
+/* ================= init ================= */
+sizeBoard();
+setupStage(0,false);
+fitBoard();
+</script>
+</body>
+</html>
