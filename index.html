@@ -241,7 +241,7 @@
     </div>
   </div>
 
-  <div class="helpline">같은 색 <b>3개</b> 터짐 · <b>4개</b> 라인폭탄 · <b>ㄱ/ㄴ자 5개</b> 광역폭탄 · <b>직선 5개</b> 색폭탄. 폭탄은 <b>탭하면 즉시 발동</b>(색폭탄=최다 색), 색 라인을 맞추면 콤보로 터집니다.</div>
+  <div class="helpline">같은 색 <b>3개</b> 터짐 · <b>4개</b> 라인폭탄 · <b>ㄱ/ㄴ자 5개</b> 광역폭탄 · <b>직선 5개</b> 색폭탄. 폭탄은 <b>탭하면 즉시 발동</b>. 색폭탄은 탭 전엔 안 터지며, 발동 시 <b>최다 색</b>을 싹 지웁니다.</div>
 
   <!-- ===== 4. Controls ===== -->
   <div class="controls">
@@ -481,7 +481,7 @@ function scanRun(get,n,dir,runs){
     const e=get(i);
     if(!e){flush();cells=[];color=null;continue;}
     const mc=matchColor(e);
-    if(mc===WILD){cells.push(e);continue;}
+    if(mc===WILD){flush();cells=[];color=null;continue;} // 와일드카드는 매치에 참여하지 않음(탭 전용). 런을 끊음
     if(color===null){color=mc;cells.push(e);}
     else if(mc===color){cells.push(e);}
     else{flush();cells=[e];color=mc;}
@@ -586,13 +586,10 @@ async function resolve(forced){
       if(!spawns.has(key))spawns.set(key,{r:cell.r,c:cell.c,ci:run.ci,type:run.dir});
     }
 
-    // existing wildcards matched into a run detonate on that run's color
-    const wildColors=new Map();
-    for(const run of runs)for(const e of run.cells)if(e.bomb&&e.btype==='W')wildColors.set(e.r+','+e.c,run.ci);
-
+    // wildcards do NOT auto-match — they only fire on tap. so runs never contain a wildcard here.
     const clearSet=new Set();
     for(const run of runs)for(const e of run.cells){const k=e.r+','+e.c;if(!spawns.has(k))clearSet.add(k);}
-    detonate(clearSet,wildColors);
+    detonate(clearSet,null);
     for(const k of spawns.keys())clearSet.delete(k);
 
     await doClearStep(clearSet,spawns,mult);
