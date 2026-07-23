@@ -78,6 +78,26 @@
   .cfT{transform:rotateX(90deg) translateZ(24px);filter:brightness(.85);}
   .cfBo{transform:rotateX(-90deg) translateZ(24px);filter:brightness(.68);}
 
+  /* ---------- line bomb token ---------- */
+  .bomb{cursor:default;animation:bombPulse .85s infinite alternate;}
+  .bomb .bombFace{
+    position:absolute;inset:0;border-radius:11px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:inset 0 0 0 3px rgba(255,255,255,.35),0 3px 7px rgba(0,0,0,.45);
+  }
+  .bomb .bsym{font-size:19px;font-weight:900;color:rgba(0,0,0,.62);z-index:2;position:relative;}
+  .bomb .stripe{position:absolute;background:rgba(255,255,255,.94);box-shadow:0 0 5px rgba(255,255,255,.55);}
+  .stripeH{left:-6%;right:-6%;height:33%;top:33.5%;border-top:2px solid rgba(0,0,0,.32);border-bottom:2px solid rgba(0,0,0,.32);}
+  .stripeV{top:-6%;bottom:-6%;width:33%;left:33.5%;border-left:2px solid rgba(0,0,0,.32);border-right:2px solid rgba(0,0,0,.32);}
+  /* outward arrowheads showing blast direction */
+  .stripeH::before,.stripeH::after{content:"";position:absolute;top:50%;transform:translateY(-50%);border:6px solid transparent;}
+  .stripeH::before{left:1px;border-right-color:rgba(0,0,0,.45);}
+  .stripeH::after{right:1px;border-left-color:rgba(0,0,0,.45);}
+  .stripeV::before,.stripeV::after{content:"";position:absolute;left:50%;transform:translateX(-50%);border:6px solid transparent;}
+  .stripeV::before{top:1px;border-bottom-color:rgba(0,0,0,.45);}
+  .stripeV::after{bottom:1px;border-top-color:rgba(0,0,0,.45);}
+  @keyframes bombPulse{from{filter:brightness(1);}to{filter:brightness(1.2);}}
+
   .float{
     position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
     font-size:26px;font-weight:900;color:#ffd166;text-shadow:0 2px 8px rgba(0,0,0,.6);
@@ -194,7 +214,7 @@
     </div>
   </div>
 
-  <div class="helpline">블록을 <b>드래그</b>해서 굴리면 굴린 방향의 <b>반대쪽 옆면</b>이 위로. 같은 색이 <b>가로 또는 세로로 3개</b> 일직선이면 터집니다.</div>
+  <div class="helpline">블록을 <b>드래그</b>해 굴리면 굴린 방향의 <b>반대쪽 옆면</b>이 위로. 같은 색 <b>3개</b> 일직선이면 터짐. <b>4개</b>면 <b>라인폭탄</b> 생성 — 폭탄 색으로 라인을 만들면 줄 전체가 터집니다.</div>
 
   <!-- ===== 4. Controls ===== -->
   <div class="controls">
@@ -344,6 +364,17 @@ function paint(cube){
 }
 const place=cube=>{cube.el.style.transform=`translate(${cube.c*STEP}px,${cube.r*STEP}px)`;};
 
+// line bomb: fixed-color token (not a rotatable cube). type 'H' (clears row) or 'V' (clears column)
+function makeBomb(r,c,ci,type){
+  const bomb={id:++idSeq,r,c,el:null,bomb:true,ci,btype:type};
+  const el=document.createElement('div');el.className='cube bomb';
+  el.innerHTML='<div class="bombFace" style="background:'+colHex(ci)+'">'+
+    '<div class="stripe '+(type==='H'?'stripeH':'stripeV')+'"></div>'+
+    '<span class="bsym">'+colSym(ci)+'</span></div>';
+  bomb.el=el;boardInner.appendChild(el);
+  return bomb;
+}
+
 /* ================= drag-to-roll ================= */
 const ROLL_T={
   N:'rotateX(104deg)',
@@ -385,66 +416,113 @@ async function doRoll(cube,dir){
   w.getBoundingClientRect();
   w.style.transition='';
   busy=false;
+  lastRolled={r:cube.r,c:cube.c};
   resolve();
 }
 
-/* ================= match (line-only, 3+) ================= */
-function findMatches(){
-  const mark=[...Array(ROWS)].map(()=>Array(COLS).fill(false));
-  // horizontal runs
+/* ================= match (line-only, 3+) + bombs ================= */
+// effective top color for matching: normal cube -> its U face; bomb -> its fixed color
+const topColor=e=>e.bomb?e.ci:colIdx(e,'U');
+const entityAt=k=>{const i=k.indexOf(',');return grid[+k.slice(0,i)][+k.slice(i+1)];};
+const isBombAt=k=>{const e=entityAt(k);return e&&e.bomb;};
+
+function findRuns(){
+  const runs=[];
   for(let r=0;r<ROWS;r++){
-    let run=1;
-    for(let c=1;c<=COLS;c++){
-      const same=c<COLS&&grid[r][c]&&grid[r][c-1]&&colIdx(grid[r][c],'U')===colIdx(grid[r][c-1],'U');
-      if(same){run++;}
-      else{ if(run>=3)for(let k=c-run;k<c;k++)mark[r][k]=true; run=1; }
+    let c=0;
+    while(c<COLS){
+      if(!grid[r][c]){c++;continue;}
+      let c2=c+1;
+      while(c2<COLS&&grid[r][c2]&&topColor(grid[r][c2])===topColor(grid[r][c]))c2++;
+      if(c2-c>=3){const cells=[];for(let k=c;k<c2;k++)cells.push(grid[r][k]);runs.push({dir:'H',ci:topColor(grid[r][c]),len:c2-c,cells});}
+      c=c2;
     }
   }
-  // vertical runs
   for(let c=0;c<COLS;c++){
-    let run=1;
-    for(let r=1;r<=ROWS;r++){
-      const same=r<ROWS&&grid[r][c]&&grid[r-1][c]&&colIdx(grid[r][c],'U')===colIdx(grid[r-1][c],'U');
-      if(same){run++;}
-      else{ if(run>=3)for(let k=r-run;k<r;k++)mark[k][c]=true; run=1; }
+    let r=0;
+    while(r<ROWS){
+      if(!grid[r][c]){r++;continue;}
+      let r2=r+1;
+      while(r2<ROWS&&grid[r2][c]&&topColor(grid[r2][c])===topColor(grid[r][c]))r2++;
+      if(r2-r>=3){const cells=[];for(let k=r;k<r2;k++)cells.push(grid[k][c]);runs.push({dir:'V',ci:topColor(grid[r][c]),len:r2-r,cells});}
+      r=r2;
     }
   }
-  const cells=[];
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(mark[r][c]&&grid[r][c])cells.push(grid[r][c]);
-  return cells;
+  return runs;
 }
-let skipReq=false;
+// any bomb inside clearSet detonates, expanding the set to its row/column (chains through other bombs)
+function expandBombs(clearSet){
+  const q=[];for(const k of clearSet)if(isBombAt(k))q.push(k);
+  const done=new Set();
+  while(q.length){
+    const k=q.pop();if(done.has(k))continue;done.add(k);
+    const b=entityAt(k);if(!b||!b.bomb)continue;
+    const cells=[];
+    if(b.btype==='H'){for(let c=0;c<COLS;c++)cells.push(b.r+','+c);}
+    else{for(let r=0;r<ROWS;r++)cells.push(r+','+b.c);}
+    for(const kk of cells){clearSet.add(kk);if(isBombAt(kk)&&!done.has(kk))q.push(kk);}
+  }
+}
+
+let skipReq=false,lastRolled=null;
 function requestSkip(){skipReq=true;$('skipBtn').classList.remove('show');}
 async function resolve(){
   busy=true;let mult=1;
   while(true){
     if(skipReq&&goalsDone())break;
-    const all=findMatches();
-    if(!all.length)break;
-    all.forEach(cu=>{
-      const ci=colIdx(cu,'U');
-      const g=goals.find(g=>g.ci===ci);
-      if(g)g.got++;
-    });
-    score+=all.length*10*mult;
+    const runs=findRuns();
+    if(!runs.length)break;
+
+    // 4+ runs spawn a line bomb; pick the just-rolled cell if it's in the run, else the run center
+    const spawns=new Map();
+    for(const run of runs){
+      if(run.len>=4){
+        let cell=null;
+        if(mult===1&&lastRolled)cell=run.cells.find(e=>e.r===lastRolled.r&&e.c===lastRolled.c)||null;
+        if(!cell)cell=run.cells[Math.floor(run.cells.length/2)];
+        const key=cell.r+','+cell.c;
+        if(!spawns.has(key))spawns.set(key,{r:cell.r,c:cell.c,ci:run.ci,type:run.dir});
+      }
+    }
+
+    // clear set = all run cells, except cells that are becoming bombs
+    const clearSet=new Set();
+    for(const run of runs)for(const e of run.cells){const k=e.r+','+e.c;if(!spawns.has(k))clearSet.add(k);}
+    expandBombs(clearSet);
+    for(const k of spawns.keys())clearSet.delete(k);
+
+    const cleared=[];
+    for(const k of clearSet){const e=entityAt(k);if(e)cleared.push(e);}
+    cleared.forEach(e=>{const g=goals.find(g=>g.ci===topColor(e));if(g)g.got++;});
+    score+=cleared.length*10*mult;
     maxCombo=Math.max(maxCombo,mult);
     if(goalsDone()&&!over)$('skipBtn').classList.add('show');
     if(mult>1)showFloat('콤보 ×'+mult+'!');
-    else if(all.length>=5)showFloat(all.length+'개 동시!');
-    all.forEach(cu=>{
-      cu.el.style.transform=`translate(${cu.c*STEP}px,${cu.r*STEP}px) scale(.12)`;
-      cu.el.style.opacity=0;
+    else if(cleared.length>=5)showFloat(cleared.length+'개 동시!');
+
+    cleared.forEach(e=>{
+      e.el.style.transform=`translate(${e.c*STEP}px,${e.r*STEP}px) scale(.12)`;
+      e.el.style.opacity=0;
     });
     updateHUD();
+    lastRolled=null;
     await sleep(290);
-    all.forEach(cu=>{cu.el.remove();grid[cu.r][cu.c]=null;});
+    cleared.forEach(e=>{e.el.remove();grid[e.r][e.c]=null;});
+
+    // place new bombs (replace the cube sitting at each spawn cell)
+    for(const s of spawns.values()){
+      const old=grid[s.r][s.c];if(old)old.el.remove();
+      const b=makeBomb(s.r,s.c,s.ci,s.type);grid[s.r][s.c]=b;place(b);
+    }
+
+    // gravity + refill
     for(let c=0;c<COLS;c++){
       const stack=[];
       for(let r=ROWS-1;r>=0;r--)if(grid[r][c])stack.push(grid[r][c]);
       for(let r=ROWS-1;r>=0;r--){
-        const cu=stack[ROWS-1-r]||null;
-        grid[r][c]=cu;
-        if(cu){cu.r=r;cu.c=c;place(cu);}
+        const e=stack[ROWS-1-r]||null;
+        grid[r][c]=e;
+        if(e){e.r=r;e.c=c;place(e);}
       }
       const need=ROWS-stack.length;
       for(let r=0;r<need;r++){
@@ -461,8 +539,7 @@ async function resolve(){
     mult++;
   }
   $('skipBtn').classList.remove('show');
-  skipReq=false;
-  busy=false;
+  skipReq=false;busy=false;lastRolled=null;
   checkEnd();
 }
 
@@ -529,9 +606,9 @@ function buildBoard(){
   }
   let guard=0;
   while(guard++<160){
-    const g=findMatches();
-    if(!g.length)break;
-    g.forEach(cu=>{cu.orient=randOrient();paint(cu);});
+    const runs=findRuns();
+    if(!runs.length)break;
+    runs.forEach(run=>run.cells.forEach(cu=>{if(!cu.bomb){cu.orient=randOrient();paint(cu);}}));
   }
 }
 function setupStage(n,keepScore){
