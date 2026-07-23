@@ -97,6 +97,16 @@
   .stripeV::before{top:1px;border-bottom-color:rgba(0,0,0,.45);}
   .stripeV::after{bottom:1px;border-top-color:rgba(0,0,0,.45);}
   @keyframes bombPulse{from{filter:brightness(1);}to{filter:brightness(1.2);}}
+  /* "뿅!" spawn pop — runs on the inner face so it won't fight the outer fall(translate) */
+  @keyframes bombPop{0%{transform:scale(.05);opacity:.15;}55%{transform:scale(1.32);opacity:1;}78%{transform:scale(.92);}100%{transform:scale(1);}}
+  .bomb.spawning{z-index:15;}
+  .bomb.spawning .bombFace{animation:bombPop .38s cubic-bezier(.3,1.5,.5,1);}
+  /* spawn flash ring */
+  .bomb.spawning::after{
+    content:"";position:absolute;inset:-6px;border-radius:15px;pointer-events:none;
+    border:3px solid rgba(255,255,255,.9);animation:bombRing .42s ease-out forwards;
+  }
+  @keyframes bombRing{0%{transform:scale(.4);opacity:.9;}100%{transform:scale(1.35);opacity:0;}}
 
   .float{
     position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
@@ -509,11 +519,19 @@ async function resolve(){
     await sleep(290);
     cleared.forEach(e=>{e.el.remove();grid[e.r][e.c]=null;});
 
-    // place new bombs (replace the cube sitting at each spawn cell)
+    // place new bombs — pop in at the spawn cell (no slide from origin), then let gravity drop them
+    const fresh=[];
     for(const s of spawns.values()){
       const old=grid[s.r][s.c];if(old)old.el.remove();
-      const b=makeBomb(s.r,s.c,s.ci,s.type);grid[s.r][s.c]=b;place(b);
+      const b=makeBomb(s.r,s.c,s.ci,s.type);grid[s.r][s.c]=b;
+      b.el.style.transition='none';
+      place(b);                       // snap to spawn cell instantly
+      b.el.getBoundingClientRect();
+      b.el.style.transition='';
+      b.el.classList.add('spawning'); // triggers 뿅 pop + flash ring
+      fresh.push(b);
     }
+    if(fresh.length)setTimeout(()=>fresh.forEach(b=>b.el&&b.el.classList.remove('spawning')),440);
 
     // gravity + refill
     for(let c=0;c<COLS;c++){
