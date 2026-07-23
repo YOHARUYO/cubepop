@@ -113,6 +113,18 @@
     box-shadow:0 0 10px rgba(255,255,255,.7);
   }
   .bomb.wild .bsym{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6);z-index:3;font-size:17px;}
+  /* wildcard color-pick mode */
+  #board.picking{box-shadow:0 0 0 2px rgba(255,255,255,.25),0 0 26px rgba(76,201,240,.3);}
+  .cube.armed{z-index:12;animation:armedGlow .5s infinite alternate !important;}
+  .cube.armed .bombFace{box-shadow:0 0 0 3px #fff,0 0 18px 4px rgba(255,255,255,.85) !important;}
+  @keyframes armedGlow{from{filter:brightness(1.05);}to{filter:brightness(1.42);}}
+  #pickHint{
+    position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:26;
+    background:rgba(18,21,29,.94);border:1px solid #3a4256;color:#e8eaf0;
+    padding:8px 14px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap;
+    display:none;box-shadow:0 4px 14px rgba(0,0,0,.5);pointer-events:none;
+  }
+  #board.picking #pickHint{display:block;}
   @keyframes bombPulse{from{filter:brightness(1);}to{filter:brightness(1.2);}}
   /* "뿅!" spawn pop — runs on the inner face so it won't fight the outer fall(translate) */
   @keyframes bombPop{0%{transform:scale(.05);opacity:.15;}55%{transform:scale(1.32);opacity:1;}78%{transform:scale(.92);}100%{transform:scale(1);}}
@@ -232,6 +244,7 @@
     <div id="board">
       <div id="boardInner"></div>
       <button id="skipBtn" onclick="requestSkip()">목표 달성! 스킵 →</button>
+      <div id="pickHint">🎨 지울 색의 블록을 탭하세요 · 색폭탄 다시 탭 = 취소</div>
       <div id="overlay">
         <div id="ovStars"></div>
         <div id="ovTitle"></div>
@@ -241,7 +254,7 @@
     </div>
   </div>
 
-  <div class="helpline">같은 색 <b>3개</b> 터짐 · <b>4개</b> 라인폭탄 · <b>ㄱ/ㄴ자 5개</b> 광역폭탄 · <b>직선 5개</b> 색폭탄. 폭탄은 <b>탭하면 즉시 발동</b>. 색폭탄은 탭 전엔 안 터지며, 발동 시 <b>최다 색</b>을 싹 지웁니다.</div>
+  <div class="helpline">같은 색 <b>3개</b> 터짐 · <b>4개</b> 라인폭탄 · <b>ㄱ/ㄴ자 5개</b> 광역폭탄 · <b>직선 5개</b> 색폭탄. 라인·광역폭탄은 <b>탭하면 발동</b>. 색폭탄은 <b>탭 → 지울 색 블록을 탭</b>하면 그 색을 전부 지웁니다.</div>
 
   <!-- ===== 4. Controls ===== -->
   <div class="controls">
@@ -403,9 +416,9 @@ function makeBomb(r,c,ci,type){
   const sym=type==='W'?'✦':colSym(ci);
   el.innerHTML='<div class="bombFace'+(type==='W'?' prismFace':'')+'"'+bg+'>'+inner+
     '<span class="bsym">'+sym+'</span></div>';
-  // tap to detonate — bombs never roll, so a tap is unambiguous
+  // tap: line/area bombs detonate; wildcard arms color-pick (bombs never roll, so tap is unambiguous)
   el.addEventListener('pointerdown',e=>{bomb._tap={x:e.clientX,y:e.clientY};});
-  el.addEventListener('pointerup',e=>{if(bomb._tap&&Math.hypot(e.clientX-bomb._tap.x,e.clientY-bomb._tap.y)<12)tapDetonate(bomb);bomb._tap=null;});
+  el.addEventListener('pointerup',e=>{const t=bomb._tap;bomb._tap=null;if(t&&Math.hypot(e.clientX-t.x,e.clientY-t.y)<12)onBombTap(bomb);});
   el.addEventListener('pointercancel',()=>{bomb._tap=null;});
   bomb.el=el;boardInner.appendChild(el);
   return bomb;
@@ -421,7 +434,9 @@ const ROLL_T={
 const ROLL_PULL={N:'S',S:'N',E:'W',W:'E'};
 function attachGesture(cube,el){
   el.addEventListener('pointerdown',e=>{
-    if(busy||over||movesLeft<=0)return;
+    if(busy||over)return;
+    if(armedWild){cube._pick=true;return;}   // color-pick mode: tap picks this cube's color, don't roll
+    if(movesLeft<=0)return;
     e.preventDefault();
     cube._g={x:e.clientX,y:e.clientY,fired:false};
     try{el.setPointerCapture(e.pointerId);}catch(_){}
@@ -435,8 +450,11 @@ function attachGesture(cube,el){
     const dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'E':'W'):(dy>0?'S':'N');
     doRoll(cube,dir);
   });
-  el.addEventListener('pointerup',()=>cube._g=null);
-  el.addEventListener('pointercancel',()=>cube._g=null);
+  el.addEventListener('pointerup',()=>{
+    if(cube._pick){cube._pick=false;if(armedWild)pickWildColor(matchColor(cube));return;}
+    cube._g=null;
+  });
+  el.addEventListener('pointercancel',()=>{cube._g=null;cube._pick=false;});
 }
 async function doRoll(cube,dir){
   if(busy||over||movesLeft<=0)return;
@@ -600,17 +618,51 @@ async function resolve(forced){
   checkEnd();
 }
 
-// tap any bomb to detonate immediately (costs 1 move). wildcard clears the board's most-common color.
+// line/area bomb tap -> detonate now (costs 1 move)
 function tapDetonate(bomb){
   if(busy||over||movesLeft<=0)return;
   if(!bomb.el||!bomb.el.isConnected||grid[bomb.r][bomb.c]!==bomb)return;
   movesLeft--;updateHUD();
   const cs=new Set([bomb.r+','+bomb.c]);
-  const wc=new Map();
-  if(bomb.btype==='W')wc.set(bomb.r+','+bomb.c,mostCommonColor());
   lastRolled=null;
-  resolve({clearSet:cs,wildColors:wc});
+  resolve({clearSet:cs,wildColors:null});
 }
+
+/* ===== wildcard color-pick: tap wildcard to arm, then tap a colored block to clear that color ===== */
+let armedWild=null;
+function armWild(bomb){
+  if(busy||over||movesLeft<=0)return;
+  armedWild=bomb;
+  bomb.el.classList.add('armed');
+  $('board').classList.add('picking');
+}
+function unarmWild(){
+  if(armedWild&&armedWild.el)armedWild.el.classList.remove('armed');
+  armedWild=null;
+  $('board').classList.remove('picking');
+}
+function onBombTap(bomb){
+  if(busy||over)return;
+  if(armedWild){
+    if(bomb===armedWild){unarmWild();return;}                 // tap again -> cancel
+    if(bomb.btype==='W'){unarmWild();armWild(bomb);return;}    // switch to another wildcard
+    pickWildColor(bomb.ci);return;                            // tapping a line/area bomb picks its color
+  }
+  if(bomb.btype==='W'){armWild(bomb);return;}                  // arm color-pick (no move spent yet)
+  tapDetonate(bomb);                                           // line/area -> detonate immediately
+}
+function pickWildColor(color){
+  const wc=armedWild;unarmWild();
+  if(!wc||!wc.el||!wc.el.isConnected||grid[wc.r][wc.c]!==wc)return;
+  if(busy||over||movesLeft<=0||color<0)return;
+  movesLeft--;updateHUD();
+  const cs=new Set([wc.r+','+wc.c]);
+  const map=new Map();map.set(wc.r+','+wc.c,color);
+  lastRolled=null;
+  resolve({clearSet:cs,wildColors:map});
+}
+// tap outside the board cancels a pending color-pick
+document.addEventListener('pointerdown',e=>{if(armedWild&&!$('board').contains(e.target))unarmWild();});
 
 /* ================= game flow ================= */
 const goalsDone=()=>goals.every(g=>g.got>=g.need);
@@ -693,6 +745,7 @@ function setupStage(n,keepScore){
   movesLeft=cfg.moves;maxCombo=1;over=false;busy=false;
   if(!keepScore)score=0;
   skipReq=false;$('skipBtn').classList.remove('show');
+  if(typeof unarmWild==='function')unarmWild();
   renderViewer();renderNet();buildBoard();
   $('overlay').classList.remove('show');
   updateHUD();
