@@ -9,73 +9,41 @@
   body{
     background:#12151d;color:#e8eaf0;
     font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic','Segoe UI',sans-serif;
-    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+    min-height:100vh;padding:16px;display:flex;justify-content:center;
   }
-  .wrap{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
-  .panel{width:256px;display:flex;flex-direction:column;gap:12px;}
-  h1{font-size:19px;letter-spacing:1px;}
-  h1 small{font-size:11px;color:#79819a;font-weight:400;display:block;margin-top:3px;letter-spacing:0;}
-  .card{background:#1b1f2a;border:1px solid #2a3040;border-radius:14px;padding:13px;}
-  .card h2{font-size:11px;color:#8b93a7;margin-bottom:9px;font-weight:700;letter-spacing:.5px;}
+  .app{width:100%;max-width:460px;display:flex;flex-direction:column;gap:11px;}
+  .card{background:#1b1f2a;border:1px solid #2a3040;border-radius:14px;padding:12px;}
 
-  /* ---------- 3D viewer ---------- */
-  .viewer{height:180px;perspective:640px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;}
-  .viewer:active{cursor:grabbing;}
-  .cube3d{width:104px;height:104px;position:relative;transform-style:preserve-3d;transform:rotateX(-24deg) rotateY(-34deg);}
-  .f3d{
-    position:absolute;width:104px;height:104px;border:2px solid rgba(0,0,0,.35);border-radius:9px;
-    display:flex;align-items:center;justify-content:center;font-size:36px;color:rgba(0,0,0,.5);
-    backface-visibility:hidden;
-  }
-  .f3d .lbl{position:absolute;top:5px;left:8px;font-size:10px;font-weight:700;color:rgba(0,0,0,.55);}
-  .hint{font-size:10.5px;color:#79819a;text-align:center;margin-top:4px;line-height:1.5;}
-
-  /* ---------- net (전개도) ---------- */
-  .net{display:grid;grid-template-areas:". n ." "w u e" ". s ." ". d .";
-    grid-template-columns:repeat(3,36px);grid-auto-rows:36px;gap:4px;justify-content:center;}
-  .net div{border-radius:7px;display:flex;align-items:center;justify-content:center;
-    font-size:14px;color:rgba(0,0,0,.5);position:relative;border:1.5px solid rgba(0,0,0,.3);}
-  .net div i{position:absolute;top:1px;left:3px;font-size:8px;font-style:normal;font-weight:700;color:rgba(0,0,0,.55);}
-  .nN{grid-area:n}.nS{grid-area:s}.nE{grid-area:e}.nW{grid-area:w}.nU{grid-area:u}.nD{grid-area:d}
-  .nU{outline:2px solid #fff;outline-offset:1px;}
-
-  /* ---------- HUD ---------- */
+  /* ---------- top bar ---------- */
+  .topbar{display:flex;flex-direction:column;gap:10px;}
   .stageHead{display:flex;align-items:baseline;justify-content:space-between;}
-  .stageHead .sn{font-size:24px;font-weight:900;letter-spacing:1px;}
+  .stageHead .sn{font-size:22px;font-weight:900;letter-spacing:1px;}
   .stageHead .colors{font-size:11px;color:#8b93a7;}
   .stats{display:flex;gap:8px;}
-  .stat{flex:1;background:#1b1f2a;border:1px solid #2a3040;border-radius:12px;padding:9px 6px;text-align:center;}
-  .stat .v{font-size:21px;font-weight:800;}
-  .stat .k{font-size:10px;color:#8b93a7;margin-top:2px;}
+  .stat{flex:1;background:#242a38;border:1px solid #303748;border-radius:10px;padding:7px 6px;text-align:center;}
+  .stat .v{font-size:19px;font-weight:800;}
+  .stat .k{font-size:9.5px;color:#8b93a7;margin-top:1px;}
   #movesV.low{color:#ff5d73;}
 
-  .goals{display:flex;flex-direction:column;gap:7px;}
+  /* ---------- goals (horizontal) ---------- */
+  .goalsCard h2{font-size:10.5px;color:#8b93a7;margin-bottom:8px;font-weight:700;letter-spacing:.5px;}
+  .goalsRow{display:flex;gap:8px;}
   .gchip{
-    display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:10px;
-    background:#242a38;border:1px solid #303748;
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;
+    padding:9px 6px;border-radius:11px;background:#242a38;border:1px solid #303748;
   }
   .gchip .dot{
-    width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;
-    font-size:14px;color:rgba(0,0,0,.5);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.25);flex:none;
+    width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-size:15px;color:rgba(0,0,0,.5);box-shadow:inset 0 0 0 2px rgba(0,0,0,.22);
   }
-  .gchip .cnt{font-size:15px;font-weight:800;margin-left:auto;}
-  .gchip .bar{flex:1;height:7px;background:#181c26;border-radius:5px;overflow:hidden;}
-  .gchip .bar span{display:block;height:100%;border-radius:5px;transition:width .3s;}
+  .gchip .bar{width:100%;height:6px;background:#181c26;border-radius:4px;overflow:hidden;}
+  .gchip .bar span{display:block;height:100%;border-radius:4px;transition:width .3s;}
+  .gchip .cnt{font-size:13px;font-weight:800;}
   .gchip.done{border-color:#06d6a0;}
   .gchip.done .cnt{color:#06d6a0;}
 
-  .btns{display:flex;gap:6px;}
-  .btns button{flex:1;padding:9px 4px;border-radius:10px;border:none;background:#323a4d;color:#dfe3ee;
-    font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
-  .btns button:hover{background:#3d4763;}
-  .btns .primary{background:#0e7c66;}
-  .btns .primary:hover{background:#0f9178;}
-
-  .help{font-size:11.5px;color:#8b93a7;line-height:1.65;}
-  .help b{color:#c9d0e0;}
-
   /* ---------- board ---------- */
-  .boardWrap{position:relative;}
+  .boardWrap{align-self:center;}
   #board{position:relative;background:#171b25;border:1px solid #2a3040;border-radius:16px;padding:10px;}
   #boardInner{position:relative;}
   .slot{position:absolute;width:64px;height:64px;border-radius:11px;background:#1f2431;}
@@ -117,13 +85,6 @@
   }
   @keyframes floatUp{0%{opacity:0;transform:translate(-50%,-30%) scale(.6);}25%{opacity:1;transform:translate(-50%,-50%) scale(1.1);}70%{opacity:1;}100%{opacity:0;transform:translate(-50%,-90%) scale(1);}}
 
-  #overlay{
-    position:absolute;inset:0;background:rgba(14,16,24,.85);border-radius:16px;z-index:30;
-    display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
-  }
-  #overlay.show{display:flex;}
-  #ovStars{font-size:34px;letter-spacing:6px;}
-
   #skipBtn{
     position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:25;
     padding:11px 24px;border-radius:24px;border:none;background:#06d6a0;color:#08382c;
@@ -133,61 +94,93 @@
   #skipBtn.show{display:block;}
   @keyframes skipPulse{from{transform:translateX(-50%) scale(1);}to{transform:translateX(-50%) scale(1.07);}}
 
-  /* ---------- mobile ---------- */
-  @media (max-width:900px){
-    body{padding:10px 6px;align-items:flex-start;overflow-x:hidden;}
-    .wrap{flex-direction:column;align-items:center;gap:14px;max-width:100%;}
-    .boardWrap{order:-1;}
-    .panel{width:100%;max-width:446px;}
-    .viewer{height:150px;}
+  #overlay{
+    position:absolute;inset:0;background:rgba(14,16,24,.86);border-radius:16px;z-index:30;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:16px;
   }
+  #overlay.show{display:flex;}
+  #ovStars{font-size:34px;letter-spacing:6px;}
   #ovStars .off{opacity:.22;}
-  #ovTitle{font-size:29px;font-weight:900;}
+  #ovTitle{font-size:26px;font-weight:900;}
   #ovSub{font-size:13px;color:#aab2c5;line-height:1.7;}
-  #overlay .btns{margin-top:8px;width:220px;}
+  #ovBtns{margin-top:8px;display:flex;gap:8px;width:230px;}
+  #ovBtns button{flex:1;padding:10px 6px;border-radius:10px;border:none;background:#323a4d;color:#dfe3ee;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  #ovBtns .primary{background:#0e7c66;}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;gap:8px;}
+  .controls button{
+    flex:1;padding:10px 6px;border-radius:11px;border:none;background:#323a4d;color:#dfe3ee;
+    font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;
+  }
+  .controls button:hover{background:#3d4763;}
+  .cubeBtn{flex:1.4 !important;display:flex;align-items:center;justify-content:center;gap:9px;background:#2b3a55 !important;}
+  .cubeBtn:hover{background:#33456a !important;}
+  .miniWrap{width:34px;height:34px;perspective:150px;flex:none;}
+  .cube3d.mini{width:34px;height:34px;position:relative;transform-style:preserve-3d;transform:rotateX(-24deg) rotateY(-32deg);}
+  .cube3d.mini .f3d{width:34px;height:34px;font-size:12px;border-radius:5px;border-width:1.5px;}
+
+  .helpline{font-size:11px;color:#79819a;text-align:center;line-height:1.6;padding:0 6px;}
+  .helpline b{color:#aeb6c8;}
+
+  /* ---------- cube modal ---------- */
+  .modal{
+    position:fixed;inset:0;background:rgba(8,10,16,.74);z-index:50;padding:20px;
+    display:none;align-items:center;justify-content:center;
+  }
+  .modal.show{display:flex;}
+  .modalInner{
+    background:#1b1f2a;border:1px solid #2a3040;border-radius:18px;padding:18px 18px 20px;
+    width:300px;max-width:100%;position:relative;
+  }
+  .modalInner h2{font-size:12px;color:#c3cad9;margin-bottom:12px;font-weight:700;padding-right:22px;}
+  .modal .close{
+    position:absolute;top:9px;right:11px;background:none;border:none;color:#8b93a7;
+    font-size:19px;cursor:pointer;line-height:1;font-family:inherit;
+  }
+  .viewer{height:170px;perspective:640px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;}
+  .viewer:active{cursor:grabbing;}
+  .cube3d{width:104px;height:104px;position:relative;transform-style:preserve-3d;transform:rotateX(-24deg) rotateY(-34deg);}
+  .f3d{
+    position:absolute;width:104px;height:104px;border:2px solid rgba(0,0,0,.35);border-radius:9px;
+    display:flex;align-items:center;justify-content:center;font-size:36px;color:rgba(0,0,0,.5);
+    backface-visibility:hidden;
+  }
+  .f3d .lbl{position:absolute;top:5px;left:8px;font-size:10px;font-weight:700;color:rgba(0,0,0,.55);}
+  .net{display:grid;grid-template-areas:". n ." "w u e" ". s ." ". d .";
+    grid-template-columns:repeat(3,36px);grid-auto-rows:36px;gap:4px;justify-content:center;margin-top:14px;}
+  .net div{border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;color:rgba(0,0,0,.5);position:relative;border:1.5px solid rgba(0,0,0,.3);}
+  .net div i{position:absolute;top:1px;left:3px;font-size:8px;font-style:normal;font-weight:700;color:rgba(0,0,0,.55);}
+  .nN{grid-area:n}.nS{grid-area:s}.nE{grid-area:e}.nW{grid-area:w}.nU{grid-area:u}.nD{grid-area:d}
+  .nU{outline:2px solid #fff;outline-offset:1px;}
+  .modalHint{font-size:11px;color:#79819a;text-align:center;margin-top:14px;line-height:1.6;}
+  .modalHint b{color:#aeb6c8;}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="app">
 
-  <!-- ===== left panel ===== -->
-  <div class="panel">
-    <h1>CUBE POP<small>스테이지 모드 · 프로토타입 v3</small></h1>
-
-    <div class="card">
-      <h2>이번 스테이지의 큐브 &nbsp;·&nbsp; 드래그해서 굴려보기</h2>
-      <div class="viewer" id="viewer">
-        <div class="cube3d" id="cube3d">
-          <div class="f3d" id="v-U"><span class="lbl">보이는 면</span><b class="s"></b></div>
-          <div class="f3d" id="v-D"><span class="lbl">반대면</span><b class="s"></b></div>
-          <div class="f3d" id="v-N"><span class="lbl">뒤</span><b class="s"></b></div>
-          <div class="f3d" id="v-S"><span class="lbl">앞</span><b class="s"></b></div>
-          <div class="f3d" id="v-E"><span class="lbl">오른쪽</span><b class="s"></b></div>
-          <div class="f3d" id="v-W"><span class="lbl">왼쪽</span><b class="s"></b></div>
-        </div>
-      </div>
-      <div class="hint">판 위의 모든 블록은 이 큐브와 <b>같은 색 배치</b>,<br>놓인 방향만 다릅니다</div>
+  <!-- ===== 1. Stage + stats ===== -->
+  <div class="topbar card">
+    <div class="stageHead">
+      <span class="sn" id="stageV">STAGE 1</span>
+      <span class="colors" id="colorsV"></span>
     </div>
-
-    <div class="card">
-      <h2>전개도</h2>
-      <div class="net">
-        <div class="nN" id="n-N"><i>위</i><b class="s"></b></div>
-        <div class="nW" id="n-W"><i>왼</i><b class="s"></b></div>
-        <div class="nU" id="n-U"><i>▣</i><b class="s"></b></div>
-        <div class="nE" id="n-E"><i>오른</i><b class="s"></b></div>
-        <div class="nS" id="n-S"><i>아래</i><b class="s"></b></div>
-        <div class="nD" id="n-D"><i>반대</i><b class="s"></b></div>
-      </div>
-    </div>
-
-    <div class="card help">
-      <b>조작법</b> — 블록을 원하는 방향으로 <b>드래그</b>하면 큐브가 굴러갑니다. 굴린 방향의 <b>반대쪽 옆면</b>이 위로 (1회 굴리기 = 1회 소모).<br>
-      같은 색 <b>3개 이상</b>이면 터짐. <b>목표 색만 수집에 카운트</b>되지만, 다른 색을 터뜨려 연쇄를 만드는 것도 전략!
+    <div class="stats">
+      <div class="stat"><div class="v" id="movesV">0</div><div class="k">남은 횟수</div></div>
+      <div class="stat"><div class="v" id="scoreV">0</div><div class="k">누적 점수</div></div>
+      <div class="stat"><div class="v" id="comboV">×1</div><div class="k">최대 콤보</div></div>
     </div>
   </div>
 
-  <!-- ===== board ===== -->
+  <!-- ===== 2. Collection goals ===== -->
+  <div class="card goalsCard">
+    <h2>수집 목표</h2>
+    <div class="goalsRow" id="goals"></div>
+  </div>
+
+  <!-- ===== 3. Play area ===== -->
   <div class="boardWrap">
     <div id="board">
       <div id="boardInner"></div>
@@ -196,59 +189,70 @@
         <div id="ovStars"></div>
         <div id="ovTitle"></div>
         <div id="ovSub"></div>
-        <div class="btns" id="ovBtns"></div>
+        <div id="ovBtns"></div>
       </div>
     </div>
   </div>
 
-  <!-- ===== right panel ===== -->
-  <div class="panel">
-    <div class="card">
-      <div class="stageHead">
-        <div class="sn" id="stageV">STAGE 1</div>
-        <div class="colors" id="colorsV"></div>
-      </div>
-    </div>
+  <div class="helpline">블록을 <b>드래그</b>해서 굴리면 굴린 방향의 <b>반대쪽 옆면</b>이 위로. 같은 색이 <b>가로 또는 세로로 3개</b> 일직선이면 터집니다.</div>
 
-    <div class="stats">
-      <div class="stat"><div class="v" id="movesV">0</div><div class="k">남은 횟수</div></div>
-      <div class="stat"><div class="v" id="scoreV">0</div><div class="k">누적 점수</div></div>
-      <div class="stat"><div class="v" id="comboV">×1</div><div class="k">최대 콤보</div></div>
-    </div>
-
-    <div class="card">
-      <h2>수집 목표</h2>
-      <div class="goals" id="goals"></div>
-    </div>
-
-    <div class="btns">
-      <button onclick="restartStage()">이 스테이지 다시</button>
-      <button onclick="resetRun()">처음부터</button>
-    </div>
-
-    <div class="card help">
-      <b>난이도 커브</b> — 스테이지가 오를수록 큐브의 <b>구성 색이 3색 → 6색</b>까지 늘어나고, 색 분포도 까다로워집니다. 6면이 전부 다른 색인 큐브가 최종 단계!<br><br>
-      별점: 남은 횟수가 많을수록 ★★★
-    </div>
+  <!-- ===== 4. Controls ===== -->
+  <div class="controls">
+    <button class="cubeBtn" onclick="openCube()">
+      <span class="miniWrap"><span class="cube3d mini" id="miniCube">
+        <span class="f3d" id="m-U"><b class="s"></b></span>
+        <span class="f3d" id="m-D"><b class="s"></b></span>
+        <span class="f3d" id="m-N"><b class="s"></b></span>
+        <span class="f3d" id="m-S"><b class="s"></b></span>
+        <span class="f3d" id="m-E"><b class="s"></b></span>
+        <span class="f3d" id="m-W"><b class="s"></b></span>
+      </span></span>
+      이번 큐브 보기
+    </button>
+    <button onclick="restartStage()">다시</button>
+    <button onclick="resetRun()">처음부터</button>
   </div>
 
 </div>
 
+<!-- ===== cube info modal ===== -->
+<div class="modal" id="cubeModal">
+  <div class="modalInner">
+    <button class="close" onclick="closeCube()">✕</button>
+    <h2>이번 스테이지의 큐브 · 드래그해서 굴려보기</h2>
+    <div class="viewer" id="viewer">
+      <div class="cube3d" id="cube3d">
+        <div class="f3d" id="v-U"><span class="lbl">보이는 면</span><b class="s"></b></div>
+        <div class="f3d" id="v-D"><span class="lbl">반대면</span><b class="s"></b></div>
+        <div class="f3d" id="v-N"><span class="lbl">뒤</span><b class="s"></b></div>
+        <div class="f3d" id="v-S"><span class="lbl">앞</span><b class="s"></b></div>
+        <div class="f3d" id="v-E"><span class="lbl">오른쪽</span><b class="s"></b></div>
+        <div class="f3d" id="v-W"><span class="lbl">왼쪽</span><b class="s"></b></div>
+      </div>
+    </div>
+    <div class="net">
+      <div class="nN" id="n-N"><i>위</i><b class="s"></b></div>
+      <div class="nW" id="n-W"><i>왼</i><b class="s"></b></div>
+      <div class="nU" id="n-U"><i>▣</i><b class="s"></b></div>
+      <div class="nE" id="n-E"><i>오른</i><b class="s"></b></div>
+      <div class="nS" id="n-S"><i>아래</i><b class="s"></b></div>
+      <div class="nD" id="n-D"><i>반대</i><b class="s"></b></div>
+    </div>
+    <div class="modalHint">판 위의 모든 블록은 이 큐브와 <b>같은 색 배치</b>,<br>놓인 방향만 다릅니다</div>
+  </div>
+</div>
+
 <script>
 'use strict';
-/* ================= stage config =================
-   dist  : 큐브 6면의 색 분포 (합=6). 앞쪽 색일수록 면이 많음
-   goals : [로컬 색 인덱스, 수집 개수]  (인덱스가 클수록 희귀한 색)
-   moves : 제한 횟수
-================================================== */
+/* ================= stage config ================= */
 const STAGES=[
-  {dist:[2,2,2],       goals:[[0,9],[1,9]],        moves:13},
-  {dist:[2,2,1,1],     goals:[[0,10],[2,8]],       moves:14},
-  {dist:[3,1,1,1],     goals:[[1,8],[2,8]],        moves:15},
-  {dist:[2,1,1,1,1],   goals:[[0,10],[1,7],[2,7]], moves:16},
-  {dist:[1,1,1,1,1,1], goals:[[0,6],[1,6],[2,6]],  moves:16},
+  {dist:[2,2,2],       goals:[[0,9],[1,9]],        moves:15},
+  {dist:[2,2,1,1],     goals:[[0,10],[2,8]],       moves:16},
+  {dist:[3,1,1,1],     goals:[[1,8],[2,8]],        moves:17},
+  {dist:[2,1,1,1,1],   goals:[[0,10],[1,7],[2,7]], moves:18},
+  {dist:[1,1,1,1,1,1], goals:[[0,6],[1,6],[2,6]],  moves:18},
 ];
-function stageConfig(n){ // n: 0-based
+function stageConfig(n){
   if(n<STAGES.length)return JSON.parse(JSON.stringify(STAGES[n]));
   const loop=n-STAGES.length;
   const base=JSON.parse(JSON.stringify(STAGES[2+(loop%3)]));
@@ -262,12 +266,13 @@ const PALETTE=['#ef476f','#ffd166','#06d6a0','#4cc9f0','#b78bfa','#ff9448'];
 const SYMS=['●','▲','■','★','◆','♥'];
 const ROWS=6,COLS=6,CELL=64,GAP=8,STEP=CELL+GAP;
 const REST='rotateX(14deg)';
+const SLOTS=['U','D','N','S','E','W'];
 
 /* ================= state ================= */
-let stageNo=0;             // 0-based
-let faceColorIdx=[];       // face id(0..5) -> local color index
-let stageColors=[];        // local color index -> palette index
-let goals=[];              // [{ci,need,got}]
+let stageNo=0;
+let faceColorIdx=[];
+let stageColors=[];
+let goals=[];
 let cfgMoves=0;
 let grid=[];
 let movesLeft=0,score=0,maxCombo=1;
@@ -330,7 +335,7 @@ function makeCube(r,c){
   return cube;
 }
 function paint(cube){
-  for(const slot of ['U','D','N','S','E','W']){
+  for(const slot of SLOTS){
     const ci=colIdx(cube,slot);
     cube.f[slot].style.background=colHex(ci);
     cube.f[slot].querySelector('span').textContent=colSym(ci);
@@ -383,36 +388,39 @@ async function doRoll(cube,dir){
   resolve();
 }
 
-/* ================= match / cascade ================= */
+/* ================= match (line-only, 3+) ================= */
 function findMatches(){
-  const seen=new Set(),groups=[];
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    const cu=grid[r][c];
-    if(!cu||seen.has(cu.id))continue;
-    const col=colIdx(cu,'U'),stack=[[r,c]],grp=[];
-    seen.add(cu.id);
-    while(stack.length){
-      const[rr,cc]=stack.pop();grp.push(grid[rr][cc]);
-      for(const[dr,dc]of[[1,0],[-1,0],[0,1],[0,-1]]){
-        const nr=rr+dr,nc=cc+dc;
-        if(nr<0||nr>=ROWS||nc<0||nc>=COLS)continue;
-        const nb=grid[nr][nc];
-        if(nb&&!seen.has(nb.id)&&colIdx(nb,'U')===col){seen.add(nb.id);stack.push([nr,nc]);}
-      }
+  const mark=[...Array(ROWS)].map(()=>Array(COLS).fill(false));
+  // horizontal runs
+  for(let r=0;r<ROWS;r++){
+    let run=1;
+    for(let c=1;c<=COLS;c++){
+      const same=c<COLS&&grid[r][c]&&grid[r][c-1]&&colIdx(grid[r][c],'U')===colIdx(grid[r][c-1],'U');
+      if(same){run++;}
+      else{ if(run>=3)for(let k=c-run;k<c;k++)mark[r][k]=true; run=1; }
     }
-    if(grp.length>=3)groups.push(grp);
   }
-  return groups;
+  // vertical runs
+  for(let c=0;c<COLS;c++){
+    let run=1;
+    for(let r=1;r<=ROWS;r++){
+      const same=r<ROWS&&grid[r][c]&&grid[r-1][c]&&colIdx(grid[r][c],'U')===colIdx(grid[r-1][c],'U');
+      if(same){run++;}
+      else{ if(run>=3)for(let k=r-run;k<r;k++)mark[k][c]=true; run=1; }
+    }
+  }
+  const cells=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(mark[r][c]&&grid[r][c])cells.push(grid[r][c]);
+  return cells;
 }
 let skipReq=false;
 function requestSkip(){skipReq=true;$('skipBtn').classList.remove('show');}
 async function resolve(){
   busy=true;let mult=1;
   while(true){
-    if(skipReq&&goalsDone())break;   // 목표 달성 후 스킵: 남은 연쇄 생략
-    const groups=findMatches();
-    if(!groups.length)break;
-    const all=groups.flat();
+    if(skipReq&&goalsDone())break;
+    const all=findMatches();
+    if(!all.length)break;
     all.forEach(cu=>{
       const ci=colIdx(cu,'U');
       const g=goals.find(g=>g.ci===ci);
@@ -472,7 +480,7 @@ function starCount(){
 function winStage(){
   over=true;
   const s=starCount();
-  score+=movesLeft*20; // 남은 횟수 보너스
+  score+=movesLeft*20;
   $('ovStars').innerHTML='★★★'.split('').map((c,i)=>i<s?'<span>★</span>':'<span class="off">★</span>').join('');
   $('ovTitle').textContent='STAGE '+(stageNo+1)+' 클리어!';
   $('ovTitle').style.color='#06d6a0';
@@ -520,10 +528,10 @@ function buildBoard(){
     const cu=makeCube(r,c);grid[r][c]=cu;paint(cu);place(cu);
   }
   let guard=0;
-  while(guard++<120){
+  while(guard++<160){
     const g=findMatches();
     if(!g.length)break;
-    g.flat().forEach(cu=>{cu.orient=randOrient();paint(cu);});
+    g.forEach(cu=>{cu.orient=randOrient();paint(cu);});
   }
 }
 function setupStage(n,keepScore){
@@ -537,8 +545,8 @@ function setupStage(n,keepScore){
   goals=cfg.goals.map(([ci,need])=>({ci,need,got:0}));
   cfgMoves=cfg.moves;
   movesLeft=cfg.moves;maxCombo=1;over=false;busy=false;
-  skipReq=false;$('skipBtn').classList.remove('show');
   if(!keepScore)score=0;
+  skipReq=false;$('skipBtn').classList.remove('show');
   renderViewer();renderNet();buildBoard();
   $('overlay').classList.remove('show');
   updateHUD();
@@ -547,36 +555,45 @@ function nextStage(){setupStage(stageNo+1,true);}
 function restartStage(){setupStage(stageNo,true);}
 function resetRun(){setupStage(0,false);}
 
-/* ================= 3D viewer & net ================= */
-const H=52;
-const FACE_T={
-  U:'rotateX(90deg) translateZ('+H+'px)',
-  D:'rotateX(-90deg) translateZ('+H+'px)',
-  N:'rotateY(180deg) translateZ('+H+'px)',
-  S:'translateZ('+H+'px)',
-  E:'rotateY(90deg) translateZ('+H+'px)',
-  W:'rotateY(-90deg) translateZ('+H+'px)'
-};
-function renderViewer(){
-  const io=identOrient();
-  for(const slot of ['U','D','N','S','E','W']){
-    const el=$('v-'+slot);
-    el.style.transform=FACE_T[slot];
+/* ================= cube preview (modal + mini) ================= */
+function faceTransforms(half){
+  return {
+    U:'rotateX(90deg) translateZ('+half+'px)',
+    D:'rotateX(-90deg) translateZ('+half+'px)',
+    N:'rotateY(180deg) translateZ('+half+'px)',
+    S:'translateZ('+half+'px)',
+    E:'rotateY(90deg) translateZ('+half+'px)',
+    W:'rotateY(-90deg) translateZ('+half+'px)'
+  };
+}
+function paintCubeFaces(prefix,half){
+  const io=identOrient();const T=faceTransforms(half);
+  for(const slot of SLOTS){
+    const el=$(prefix+slot);if(!el)continue;
+    el.style.transform=T[slot];
     el.style.background=colHex(faceColorIdx[io[slot]]);
-    el.querySelector('.s').textContent=colSym(faceColorIdx[io[slot]]);
+    const s=el.querySelector('.s');if(s)s.textContent=colSym(faceColorIdx[io[slot]]);
   }
+}
+function renderViewer(){
+  paintCubeFaces('v-',52);
+  paintCubeFaces('m-',17);
 }
 function renderNet(){
   const io=identOrient();
-  for(const slot of ['U','D','N','S','E','W']){
+  for(const slot of SLOTS){
     const el=$('n-'+slot);
     el.style.background=colHex(faceColorIdx[io[slot]]);
     el.querySelector('.s').textContent=colSym(faceColorIdx[io[slot]]);
   }
 }
+function openCube(){$('cubeModal').classList.add('show');}
+function closeCube(){$('cubeModal').classList.remove('show');}
+$('cubeModal').addEventListener('pointerdown',e=>{if(e.target===$('cubeModal'))closeCube();});
+
 let rotX=-24,rotY=-34,dragging=false,lx=0,ly=0;
 const viewer=$('viewer'),cube3d=$('cube3d');
-viewer.addEventListener('pointerdown',e=>{dragging=true;lx=e.clientX;ly=e.clientY;viewer.setPointerCapture(e.pointerId);});
+viewer.addEventListener('pointerdown',e=>{dragging=true;lx=e.clientX;ly=e.clientY;try{viewer.setPointerCapture(e.pointerId);}catch(_){}});
 viewer.addEventListener('pointermove',e=>{
   if(!dragging)return;
   rotY+=(e.clientX-lx)*.55;rotX-=(e.clientY-ly)*.55;
@@ -586,12 +603,12 @@ viewer.addEventListener('pointermove',e=>{
 viewer.addEventListener('pointerup',()=>dragging=false);
 viewer.addEventListener('pointercancel',()=>dragging=false);
 
-/* ================= responsive board scale ================= */
+/* ================= responsive ================= */
 function fitBoard(){
-  const natural=COLS*STEP-GAP+22;              // board padding+border 포함
+  const natural=COLS*STEP-GAP+22;
   const vw=Math.min(document.documentElement.clientWidth,screen.width||99999);
-  const sc=Math.min(1,(vw-12)/natural);
-  $('board').style.zoom=sc;                    // zoom은 레이아웃까지 함께 축소
+  const sc=Math.min(1,(vw-14)/natural);
+  $('board').style.zoom=sc;
 }
 window.addEventListener('resize',fitBoard);
 
