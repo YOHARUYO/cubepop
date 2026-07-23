@@ -96,6 +96,14 @@
   .stripeV::before,.stripeV::after{content:"";position:absolute;left:50%;transform:translateX(-50%);border:6px solid transparent;}
   .stripeV::before{top:1px;border-bottom-color:rgba(0,0,0,.45);}
   .stripeV::after{bottom:1px;border-top-color:rgba(0,0,0,.45);}
+  /* area bomb: circular radial burst (clears surrounding 9) */
+  .bomb .burst{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:74%;height:74%;border-radius:50%;
+    border:3px solid rgba(255,255,255,.92);
+    background:radial-gradient(circle,rgba(255,255,255,.6) 0 32%,rgba(255,255,255,.12) 40% 60%,transparent 63%);
+    box-shadow:0 0 7px rgba(255,255,255,.5),inset 0 0 6px rgba(255,255,255,.45);
+  }
   @keyframes bombPulse{from{filter:brightness(1);}to{filter:brightness(1.2);}}
   /* "뿅!" spawn pop — runs on the inner face so it won't fight the outer fall(translate) */
   @keyframes bombPop{0%{transform:scale(.05);opacity:.15;}55%{transform:scale(1.32);opacity:1;}78%{transform:scale(.92);}100%{transform:scale(1);}}
@@ -224,7 +232,7 @@
     </div>
   </div>
 
-  <div class="helpline">블록을 <b>드래그</b>해 굴리면 굴린 방향의 <b>반대쪽 옆면</b>이 위로. 같은 색 <b>3개</b> 일직선이면 터짐. <b>4개</b>면 <b>라인폭탄</b> 생성 — 폭탄 색으로 라인을 만들면 줄 전체가 터집니다.</div>
+  <div class="helpline">같은 색 <b>3개</b> 일직선이면 터짐. <b>4개</b>면 <b>라인폭탄</b>(줄 전체), <b>ㄱ/ㄴ자 5개</b>면 <b>광역폭탄</b>(주변 9칸). 폭탄은 그 색으로 라인을 만들면 발동됩니다.</div>
 
   <!-- ===== 4. Controls ===== -->
   <div class="controls">
@@ -374,12 +382,12 @@ function paint(cube){
 }
 const place=cube=>{cube.el.style.transform=`translate(${cube.c*STEP}px,${cube.r*STEP}px)`;};
 
-// line bomb: fixed-color token (not a rotatable cube). type 'H' (clears row) or 'V' (clears column)
+// fixed-color bomb token (not a rotatable cube). type 'H' row, 'V' column, 'A' 3x3 area
 function makeBomb(r,c,ci,type){
   const bomb={id:++idSeq,r,c,el:null,bomb:true,ci,btype:type};
   const el=document.createElement('div');el.className='cube bomb';
-  el.innerHTML='<div class="bombFace" style="background:'+colHex(ci)+'">'+
-    '<div class="stripe '+(type==='H'?'stripeH':'stripeV')+'"></div>'+
+  const inner=type==='A'?'<div class="burst"></div>':'<div class="stripe '+(type==='H'?'stripeH':'stripeV')+'"></div>';
+  el.innerHTML='<div class="bombFace" style="background:'+colHex(ci)+'">'+inner+
     '<span class="bsym">'+colSym(ci)+'</span></div>';
   bomb.el=el;boardInner.appendChild(el);
   return bomb;
@@ -469,7 +477,13 @@ function expandBombs(clearSet){
     const b=entityAt(k);if(!b||!b.bomb)continue;
     const cells=[];
     if(b.btype==='H'){for(let c=0;c<COLS;c++)cells.push(b.r+','+c);}
-    else{for(let r=0;r<ROWS;r++)cells.push(r+','+b.c);}
+    else if(b.btype==='V'){for(let r=0;r<ROWS;r++)cells.push(r+','+b.c);}
+    else{ // 'A' area 3x3
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+        const rr=b.r+dr,cc=b.c+dc;
+        if(rr>=0&&rr<ROWS&&cc>=0&&cc<COLS)cells.push(rr+','+cc);
+      }
+    }
     for(const kk of cells){clearSet.add(kk);if(isBombAt(kk)&&!done.has(kk))q.push(kk);}
   }
 }
@@ -483,16 +497,28 @@ async function resolve(){
     const runs=findRuns();
     if(!runs.length)break;
 
-    // 4+ runs spawn a line bomb; pick the just-rolled cell if it's in the run, else the run center
+    // decide bomb spawns. priority: L/T intersection -> area bomb; else 4+ line -> line bomb.
+    // (an existing bomb caught in a run is NOT respawned — it detonates via expandBombs)
     const spawns=new Map();
-    for(const run of runs){
-      if(run.len>=4){
-        let cell=null;
-        if(mult===1&&lastRolled)cell=run.cells.find(e=>e.r===lastRolled.r&&e.c===lastRolled.c)||null;
-        if(!cell)cell=run.cells[Math.floor(run.cells.length/2)];
-        const key=cell.r+','+cell.c;
-        if(!spawns.has(key))spawns.set(key,{r:cell.r,c:cell.c,ci:run.ci,type:run.dir});
+    const hCells=new Set(),vCells=new Set();
+    for(const run of runs){const S=run.dir==='H'?hCells:vCells;for(const e of run.cells)S.add(e.r+','+e.c);}
+    // area bombs at H∩V intersections (ㄱ/ㄴ자 5매치)
+    for(const k of hCells){
+      if(vCells.has(k)){
+        const e=entityAt(k);
+        if(e&&!e.bomb)spawns.set(k,{r:e.r,c:e.c,ci:topColor(e),type:'A'});
       }
+    }
+    // line bombs for 4+ runs that hold no bomb and don't touch an area-bomb cell
+    for(const run of runs){
+      if(run.len<4)continue;
+      if(run.cells.some(e=>e.bomb))continue;
+      if(run.cells.some(e=>{const s=spawns.get(e.r+','+e.c);return s&&s.type==='A';}))continue;
+      let cell=null;
+      if(mult===1&&lastRolled)cell=run.cells.find(e=>e.r===lastRolled.r&&e.c===lastRolled.c)||null;
+      if(!cell)cell=run.cells[Math.floor(run.cells.length/2)];
+      const key=cell.r+','+cell.c;
+      if(!spawns.has(key))spawns.set(key,{r:cell.r,c:cell.c,ci:run.ci,type:run.dir});
     }
 
     // clear set = all run cells, except cells that are becoming bombs
